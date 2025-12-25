@@ -4,3 +4,8 @@ void SecFile::HideData(float* data)
 {
     
 }
+
+void SecFile::Randomize(float& val)
+{
+    
+}
