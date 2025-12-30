@@ -1,10 +1,15 @@
 ﻿#pragma once
 #include <vector>
+#include "raylib.h"
 
 class SecFile
 {
 public:
-    void HideData(float* data);
+    static void HideData(float* data);
 
-    void Randomize(float& val);
+    static void Randomize(float& val);
+
+    static void Randomize(Image& orig, Image& newImg);
+
+    static void Randomize(Color*& cols, int count);
 };
