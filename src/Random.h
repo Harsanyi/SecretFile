@@ -1,12 +1,18 @@
 ﻿#pragma once
 #include <cstdint>
 
-static class Random
+class Random
 {
     static uint32_t state;
 
 public:
     static uint32_t GetUint();
+    static uint32_t GetUint(const int max);
+    static uint32_t GetUint(const int min, const int max);
+    static uint8_t GetByte();
+    static float GetFloat();
+    
+    static uint8_t* GetBytes(const int amount);
     
 private:
     static void Randomize();
