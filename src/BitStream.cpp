@@ -36,13 +36,31 @@ void BitStream::WriteBits(const int byteIndex, const int start, const int end, u
     uint8_t mask = GetMask(start, end);
     value &= mask;
     data[byteIndex] &= ~mask;
-    data[byteIndex] |= value; 
+    data[byteIndex] |= value;
 }
 
-BitStream::BitStream(uint8_t* data)
+BitStream::BitStream(std::vector<uint8_t>& data) : data(data)
 {
-    this->data = data;
     position = 0;
+}
+
+void BitStream::WriteBits(const std::vector<uint8_t>& values, const int bits)
+{
+    int byteIndex = 0;
+    int bitIndex = 0;
+    Pos2Indexes(position, byteIndex, bitIndex);
+
+    if (byteIndex >= data.size())
+    {
+        std::cerr << "Byte index " << byteIndex << " is out of bounds" << data.size() << std::endl;
+        return;
+    }
+
+    int valueIndex = 0;
+    while (valueIndex < values.size())
+    {
+        
+    }
 }
 
 uint8_t* BitStream::ReadBits(const int amount)

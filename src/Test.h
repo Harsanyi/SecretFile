@@ -43,7 +43,7 @@ class Test
         //create stream
         int amount = 100;
         std::vector<uint8_t> data(amount);
-        BitStream bs(data.data());
+        BitStream bs(data);
     
         //crete datas
         std::vector<int> starts(amount);
@@ -111,7 +111,7 @@ class Test
             data[i] &= ~BitStream::GetMask(starts[i], ends[i]);
             data[i] |= values[i];
         }
-        BitStream bs(values.data());
+        BitStream bs(values);
 
         //the test
         int failed = 0;
@@ -138,7 +138,7 @@ class Test
         {
             data[d] = Random::GetByte();
         }
-        BitStream bs(data.data());
+        BitStream bs(data);
     
         //create values
         std::vector<int> starts(amount);
