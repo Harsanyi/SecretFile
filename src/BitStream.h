@@ -15,8 +15,11 @@ public:
 
     static uint8_t GetMask(const int start, const int end);
 
+    static void WriteBits(std::vector<uint8_t> data, const int byteIndex, const int start, const int end, uint8_t value);
     void WriteBits(const int byteIndex, const int start, const int end, uint8_t value);
-    uint8_t ReadBits(const int byteIndex, const int start, const int end);
-    void WriteBits(const std::vector<uint8_t>& values, const int bits);
-    uint8_t* ReadBits(const int amount);
+    void WriteBits(std::vector<uint8_t>& values, const int bits);
+
+    static uint8_t ReadBits(const std::vector<uint8_t>& data, const int byteIndex, const int start, const int end);
+    uint8_t ReadBits(const int byteIndex, const int start, const int end) const;
+    std::vector<uint8_t> ReadBits(const int bitCount, const int bitDepth);
 };
