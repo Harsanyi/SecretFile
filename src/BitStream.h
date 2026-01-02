@@ -15,11 +15,13 @@ public:
 
     static uint8_t GetMask(const int start, const int end);
 
-    static void WriteBits(std::vector<uint8_t> data, const int byteIndex, const int start, const int end, uint8_t value);
-    void WriteBits(const int byteIndex, const int start, const int end, uint8_t value);
-    void WriteBits(std::vector<uint8_t>& values, const int bits);
+    static uint8_t ReadBits(const std::vector<uint8_t>& data, int bytePos, int start, int end);
+    uint8_t ReadBits(int bytePos, int start, int end) const;
+    std::vector<uint8_t> ReadBytes(int bytePos, int bitPos, int bitCount, int bitDepth) const;
+    
+    static void WriteBits(std::vector<uint8_t>& data, int bytePos, int start, int end, uint8_t value);
+    void WriteBits(int bytePos, int start, int end, uint8_t value);
+    void WriteBytes(int bytePos, int bitPos, const std::vector<uint8_t>& bytes, int bitDepth);
 
-    static uint8_t ReadBits(const std::vector<uint8_t>& data, const int byteIndex, const int start, const int end);
-    uint8_t ReadBits(const int byteIndex, const int start, const int end) const;
-    std::vector<uint8_t> ReadBits(const int bitCount, const int bitDepth);
+    int GetTotalSize(int bitDepth)const;
 };

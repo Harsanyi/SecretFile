@@ -29,109 +29,102 @@ uint8_t BitStream::GetMask(const int start, const int end)
     return result;
 }
 
-void BitStream::WriteBits(std::vector<uint8_t> data, const int byteIndex, const int start, const int end, uint8_t value)
+uint8_t BitStream::ReadBits(const std::vector<uint8_t>& data, int bytePos, int start, int end)
 {
+    if (bytePos >= data.size())throw std::out_of_range("BitStream::ReadBits");
+    if (start < 0 || start >= end)throw std::out_of_range("BitStream::ReadBits");
+    if (end >= 8)throw std::out_of_range("BitStream::ReadBits");
+    
     uint8_t mask = GetMask(start, end);
-    value &= mask;
-    data[byteIndex] &= ~mask;
-    data[byteIndex] |= value;
+    return data[bytePos] && mask;
 }
 
-uint8_t BitStream::ReadBits(const std::vector<uint8_t>& data, const int byteIndex, const int start, const int end)
+uint8_t BitStream::ReadBits(int bytePos, int start, int end) const
 {
-    uint8_t mask = GetMask(start, end);
-    mask &= data[byteIndex];
-    return mask;
+    return ReadBits(this->data, bytePos, start, end);
 }
 
-uint8_t BitStream::ReadBits(const int byteIndex, const int start, const int end) const
+std::vector<uint8_t> BitStream::ReadBytes(int bytePos, int bitPos, int bitCount, int bitDepth) const
 {
-    return ReadBits(this->data, byteIndex, start, end);
-}
+    if (bytePos >= data.size())throw std::out_of_range("BitStream::ReadBytes");
+    if (bitPos >= 8)throw std::out_of_range("BitStream::ReadBytes");
 
-std::vector<uint8_t> BitStream::ReadBits(const int bitCount, const int bitDepth)
-{
-    int length = bitCount / bitDepth;
-    std::vector<uint8_t> result(length);
+    std::vector<uint8_t> result;
     int readed = 0;
-
-    while (position < length && readed < bitCount)
+    int resByte = 0;
+    int resBit = 0;
+    while (readed < bitCount || bytePos >= data.size())
     {
-        int bytePos, bitPos;
-        Pos2Indexes(position, bytePos, bitPos);
+        //get bounds
+        bitPos = std::min(bitPos, 8-bitDepth);
+        int canRead = 8-bitPos;
+        canRead = std::min(canRead, 8-resBit);
+
+        //read data
+        uint8_t byte = ReadBits(bytePos, bitPos, bitPos+canRead);
+
+        //offset data
+        if (resBit < bitPos)
+        {
+            byte >>= bitPos-resBit;
+        }
+        if (resBit > bitPos)
+        {
+            byte <<= resBit-bitPos;
+        }
+
+        //write data
+        WriteBits(result, resByte, resBit, resBit+canRead, byte);
+
+        //apply changes
+        readed += canRead;
+        resBit += canRead;
+        if (resBit >= 8)
+        {
+            resByte++;
+            resBit -= 8;
+        }
+        bitPos += canRead;
         if (bitPos >= 8)
         {
-            position++;
-            continue;
+            bytePos++;
+            bitPos -= 8;
         }
-
-        if (bytePos >= data.size())break;
-
-        int resBitPos, resBytePos;
-        Pos2Indexes(readed, resBytePos, resBitPos);
-        if (resBitPos >= 8)
-        {
-            readed++;
-            continue;
-        }
-        
-        int canRead = 8 - std::max(resBitPos, bitPos);
-        uint8_t readedVal = ReadBits(bytePos, bitPos, bitPos+canRead);
-        if (bitPos > resBitPos)
-        {
-            readedVal = readedVal >> (bitPos-resBitPos); 
-        }
-        if (resBitPos > bitPos)
-        {
-            readedVal = readedVal << (bitPos-resBitPos);
-        }
-        
-        WriteBits(result, resBytePos, resBitPos, resBitPos+canRead, readedVal);
-
-        readed += canRead;
-        this->position+=canRead;
     }
-        
+
     return result;
 }
 
-void BitStream::WriteBits(const int byteIndex, const int start, const int end, uint8_t value)
+void BitStream::WriteBits(std::vector<uint8_t>& data, int bytePos, int start, int end, uint8_t value)
 {
-    WriteBits(this->data, byteIndex, start, end, value);
+    if (bytePos >= data.size())throw std::out_of_range("BitStream::ReadBits");
+    if (start < 0 || start >= end)throw std::out_of_range("BitStream::ReadBits");
+    if (end >= 8)throw std::out_of_range("BitStream::ReadBits");
+
+    uint8_t mask = GetMask(start, end);
+    value &= mask;
+    data[bytePos] &= ~mask;
+    data[bytePos] |= value;
 }
 
-void BitStream::WriteBits(const std::vector<uint8_t>& values, const int bits)
+void BitStream::WriteBits(int bytePos, int start, int end, uint8_t value)
 {
-    std::vector<uint8_t> sourceData(values);
-    BitStream sourceStream(sourceData);
+    return WriteBits(this->data, bytePos, start, end, value);
+}
+
+void BitStream::WriteBytes(int bytePos, int bitPos, const std::vector<uint8_t>& bytes, int bitDepth)
+{
     
-    int byteIndex = 0;
-    int bitIndex = 0;
-    Pos2Indexes(position, byteIndex, bitIndex);
-
-    if (byteIndex >= data.size())
-    {
-        std::cerr << "Byte index " << byteIndex << " is out of bounds" << data.size() << std::endl;
-        return;
-    }
+    if (GetTotalSize(bitDepth) - (bytePos * bitDepth ))throw std::out_of_range("BitStream::WriteBytes");
     
-    while (sourceStream.position < sourceData.size())
+    int writed = 0;
+    while (writed < bytes.size()*8 && bytePos < data.size())
     {
-        //get writepos
-        if (bitIndex < 8-bits)
-        {
-            position += 8-bits-bitIndex;
-            bitIndex = 8-bits;
-        }
-
-        //get bits to write
-        int bitsToWrite = 8-bitIndex;
-        if (bitsToWrite <= 0)
-        {
-            std::cerr << "Not enough bits!\n";
-            return;
-        }
-
         
     }
+}
+
+int BitStream::GetTotalSize(int bitDepth) const
+{
+    return data.size()*bitDepth;
 }
