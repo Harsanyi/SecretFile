@@ -5,8 +5,8 @@
 #include "Random.h"
 
 class Test
-{
-    public:
+{    
+public:
     inline static void RunAllTests()
     {
         std::cout << "Run All Tests ------\n";
@@ -14,6 +14,7 @@ class Test
         WriteSingleBitsTest();
         ReadSingleBitsTest();
         ReadWriteSingleBitsTest();
+        ReadWriteBytesTest();
         std::cout << "Finished Tests ------\n";
     }
     
@@ -51,14 +52,8 @@ class Test
         std::vector<uint8_t> values(amount);
         for (int i=0; i<amount; i++)
         {
-            starts[i] = Random::GetUint(8);
-            ends[i] = Random::GetUint(8);
-            if (starts[i] > ends[i])
-            {
-                uint8_t temp = starts[i];
-                starts[i] = ends[i];
-                ends[i] = temp;
-            }
+            starts[i] = Random::GetUint(7);
+            ends[i] = Random::GetUint(starts[i]+1,8);
             values[i] = BitStream::GetMask(starts[i], ends[i]);
         }
     
@@ -91,15 +86,8 @@ class Test
         std::vector<uint8_t> values(amount);
         for (int i=0; i<amount; i++)
         {
-            starts[i] = Random::GetUint(8);
-            ends[i] = Random::GetUint(8);
-            if (starts[i] > ends[i])
-            {
-                uint8_t temp = starts[i];
-                starts[i] = ends[i];
-                ends[i] = temp;
-            }
-
+            starts[i] = Random::GetUint(7);
+            ends[i] = Random::GetUint(starts[i]+1,8);
             values[i] = Random::GetByte() & BitStream::GetMask(starts[i], ends[i]);
         }
 
@@ -146,14 +134,8 @@ class Test
         std::vector<uint8_t> values(amount);
         for (int d=0; d<amount; d++)
         {
-            starts[d] = Random::GetUint(8);
-            ends[d] = Random::GetUint(8);
-            if (starts[d] > ends[d])
-            {
-                int temp = starts[d];
-                starts[d] = ends[d];
-                ends[d] = temp;
-            }
+            starts[d] = Random::GetUint(7);
+            ends[d] = Random::GetUint(starts[d]+1,8);
     
             uint8_t value = Random::GetByte();
             uint8_t mask = BitStream::GetMask(starts[d], ends[d]);
@@ -183,6 +165,51 @@ class Test
         }
     
         std::cout << std::format("ReadWriteSingleBit test ended. Runs:{} Failed:{}\n", amount, failed);
+    }
+
+    inline static void ReadWriteBytesTest()
+    {
+        int amount = 100;
+        int failed = 0;
+        int dataLength = 50;
+        int bitDepth = 4;
+        int targetLength = (8/bitDepth) * dataLength + 1;
+        for (int a=0; a<amount; a++)
+        {
+            //create source data
+            std::vector<uint8_t> data = Random::GetBytes(dataLength);
+            
+            //create target data
+            std::vector<uint8_t> target = Random::GetBytes(targetLength);
+            BitStream bs(target);
+            
+            //write data
+            bs.WriteBytes(0, 0, data, bitDepth);
+            
+            //read data
+            int bitCount = dataLength * 8;
+            auto readed = bs.ReadBytes(0,0, bitCount, bitDepth);
+            
+            //match data
+            if (readed.size() != data.size())
+            {
+                std::cout << "ERROR! readed size not match data size!\n";
+                failed++;
+                continue;
+            }
+
+            for (int d=0; d<dataLength; d++)
+            {
+                if (data[d] != readed[d])
+                {
+                    std::cout << "ERROR! Read byte not match data byte!\n";
+                    failed++;
+                    break;
+                }
+            }
+        }
+
+        std::cout << "Read-Write Bytes Test Ended! Runs:"<<amount<<" Failed:"<<failed<<"\n"; 
     }
 };
 

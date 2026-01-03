@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <ctime>
+#include <vector>
 
 uint32_t Random::state = 0;
 
@@ -35,9 +36,9 @@ float Random::GetFloat()
     return static_cast<float>(GetUint()) / static_cast<float>(UINT32_MAX);
 }
 
-uint8_t* Random::GetBytes(const int amount)
+std::vector<uint8_t> Random::GetBytes(const int amount)
 {
-    uint8_t* res = new uint8_t[amount]();
+    std::vector<uint8_t> res(amount);
     for (int i = 0; i < amount; i++)
     {
         res[i] = GetByte();

@@ -68,8 +68,8 @@ void SecFile::CharReadWriteTest()
 {
     int amount = 100;
     int depth = 4;
-    uint8_t* container = Random::GetBytes(amount);
-    uint8_t* values = Random::GetBytes(amount);
+    auto container = Random::GetBytes(amount);
+    auto values = Random::GetBytes(amount);
 
     int failed = 0;
     for (int i = 0; i < amount; i++)

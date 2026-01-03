@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <cstdint>
+#include <vector>
 
 class Random
 {
@@ -12,7 +13,7 @@ public:
     static uint8_t GetByte();
     static float GetFloat();
     
-    static uint8_t* GetBytes(const int amount);
+    static std::vector<uint8_t> GetBytes(const int amount);
     
 private:
     static void Randomize();

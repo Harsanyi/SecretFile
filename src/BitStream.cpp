@@ -97,9 +97,9 @@ std::vector<uint8_t> BitStream::ReadBytes(int bytePos, int bitPos, int bitCount,
 
 void BitStream::WriteBits(std::vector<uint8_t>& data, int bytePos, int start, int end, uint8_t value)
 {
-    if (bytePos >= data.size())throw std::out_of_range("BitStream::ReadBits");
-    if (start < 0 || start >= end)throw std::out_of_range("BitStream::ReadBits");
-    if (end >= 8)throw std::out_of_range("BitStream::ReadBits");
+    if (bytePos >= data.size())throw std::out_of_range(std::format("BitStream::WriteBits bytepos:{} >= data.size:{}", bytePos, data.size()));
+    if (start < 0 || start >= end)throw std::out_of_range(std::format("BitStream::WriteBits start:{} end:{}", start, end));
+    if (end >= 8)throw std::out_of_range(std::format("BitStream::WriteBits end:{} is >= 8!",end));
 
     uint8_t mask = GetMask(start, end);
     value &= mask;
@@ -114,13 +114,60 @@ void BitStream::WriteBits(int bytePos, int start, int end, uint8_t value)
 
 void BitStream::WriteBytes(int bytePos, int bitPos, const std::vector<uint8_t>& bytes, int bitDepth)
 {
-    
-    if (GetTotalSize(bitDepth) - (bytePos * bitDepth ))throw std::out_of_range("BitStream::WriteBytes");
-    
+    int totalSize = GetTotalSize(bitDepth);
+    int avaiableSize = totalSize - (bytePos * bitDepth - (bitPos > bitDepth ? bitPos-bitDepth : 0));
+    int requireSize = bytes.size() * 8;
+    if (avaiableSize < requireSize)
+        throw std::out_of_range(std::format("Not enough space in file! avaiable:{} required:{}", avaiableSize, requireSize));
+
+    int srcBytePos = 0;
+    int srcBitPos = 0;
     int writed = 0;
+
+    auto srcData = bytes;
+    BitStream bs(srcData);
     while (writed < bytes.size()*8 && bytePos < data.size())
     {
+        if (bitPos >= 8)
+        {
+            bitPos = 0;
+            bytePos++;
+            continue;
+        }
         
+        bitPos = std::max(bitPos, 8-bitDepth);
+        int canWrite = std::min(8-bitPos,8-srcBitPos);
+
+        //read val
+        uint8_t val = bs.ReadBits(bytePos, srcBitPos, srcBitPos+canWrite);
+
+        //offset
+        if (bitPos < srcBitPos)
+        {
+            val >>= srcBitPos-bitPos;
+        }
+        if (srcBitPos < bitPos)
+        {
+            val <<= bitPos-srcBitPos;
+        }
+
+        //write data
+        WriteBits(bytePos, bitPos, bitPos+canWrite, val);
+
+        //apply changes
+        bitPos+=canWrite;
+        if (bitPos >= 8)
+        {
+            bytePos++;
+            bitPos = 0;
+        }
+        srcBitPos += canWrite;
+        if (srcBitPos >= 8)
+        {
+            srcBitPos=0;
+            srcBytePos++;
+        }
+        writed += canWrite;
     }
 }
 
