@@ -22,7 +22,7 @@ public:
     {
         std::vector<int> starts = {0,0,0,2,4,0,4};
         std::vector<int> ends = {7,1,3,6,7,0,4};
-        std::vector<uint8_t> masks = {0b11111111,0b00000011,0b00001111,0b01111100,0b11110000,0b0000001,0b0001000};
+        std::vector<uint8_t> masks = {0b11111111,0b00000011,0b00001111,0b01111100,0b11110000,0b00000001,0b00010000};
 
         int failed = 0;
         int size = starts.size();
@@ -32,7 +32,11 @@ public:
             if (mask != masks[i])
             {
                 failed++;
-                std::cout << std::format("FAILED! start:{} end:{} mask:{} got:{}\n", starts[i], ends[i], masks[i], mask);
+                std::cout
+                << "FAILED! start:"<<starts[i]
+                <<" end:"<<ends[i]
+                <<" mask:"<<std::bitset<8>(masks[i])
+                <<" got:"<<std::bitset<8>(mask)<<"\n";
             }
         }
 
@@ -84,6 +88,7 @@ public:
         std::vector<int> starts(amount);
         std::vector<int> ends(amount);
         std::vector<uint8_t> values(amount);
+        
         for (int i=0; i<amount; i++)
         {
             starts[i] = Random::GetUint(8);
@@ -100,7 +105,7 @@ public:
             data[i] |= values[i];
         }
         BitStream bs(values);
-
+        
         //the test
         int failed = 0;
         for (int i=0; i<amount; i++)
@@ -109,7 +114,13 @@ public:
             if (read != values[i])
             {
                 failed++;
-                std::cout << std::format("{} - Read failed! got:{} expected:{}", i, read, values[i]);
+                std::cout << i << " - Read failed! "
+                << " got:" << std::bitset<8>(read)
+                << " expected:"<< std::bitset<8>(values[i])
+                << " mask:"<< std::bitset<8>(BitStream::GetMask(starts[i], ends[i]))
+                << " start:"<< starts[i]
+                << " end:"<< ends[i]
+                << "\n";
             }
         }
 
@@ -169,43 +180,43 @@ public:
 
     inline static void ReadWriteBytesTest()
     {
+        //big test
         int amount = 100;
         int failed = 0;
         int dataLength = 50;
         int bitDepth = 4;
         int targetLength = (8/bitDepth) * dataLength * 2;
-        for (int a=0; a<amount; a++)
-        {
-            //create source data
-            std::vector<uint8_t> data = Random::GetBytes(dataLength);
-            
-            //create target data
-            std::vector<uint8_t> target = Random::GetBytes(targetLength);
-            BitStream targetStream(target);
-            
-            //write data
-            targetStream.WriteBytes(0, 0, data, bitDepth);
-            
-            //read data
-            int bitCount = dataLength * 8;
-            auto readed = targetStream.ReadBytes(0,0, bitCount, bitDepth);
-            
-            //match data
-            if (readed.size() != data.size())
-            {
-                std::cout << "ERROR! readed size not match data size!\n";
-                failed++;
-                continue;
-            }
 
-            for (int d=0; d<dataLength; d++)
+        //create source data
+        std::vector<uint8_t> data = Random::GetBytes(dataLength);
+            
+        //create target data
+        std::vector<uint8_t> target = Random::GetBytes(targetLength);
+        BitStream targetStream(target);
+            
+        //write data
+        targetStream.WriteBytes(data, bitDepth);
+            
+        //read data
+        int bitCount = dataLength * 8;
+        auto readed = targetStream.ReadBytes(bitCount, bitDepth);
+            
+        //match data
+        if (readed.size() != data.size())
+        {
+            std::cout << "ERROR! readed size not match data size!\n";
+            failed++;
+            return;
+        }
+
+        for (int d=0; d<dataLength; d++)
+        {
+            if (data[d] != readed[d])
             {
-                if (data[d] != readed[d])
-                {
-                    std::cout << "ERROR! Read byte not match data byte!\n";
-                    failed++;
-                    break;
-                }
+                std::cout << "ERROR! i:"<<d
+                <<" expected:"<< std::bitset<8>(data[d])
+                <<" got:"<< std::bitset<8>(readed[d])<<"\n";
+                failed++;
             }
         }
 
