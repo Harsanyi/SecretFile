@@ -15,6 +15,7 @@ public:
         ReadSingleBitsTest();
         ReadWriteSingleBitsTest();
         ReadWriteBytesTest();
+        WriteDataToImageTest();
         std::cout << "Finished Tests ------\n";
     }
     
@@ -221,6 +222,14 @@ public:
         }
 
         std::cout << "Read-Write Bytes Test Ended! Runs:"<<amount<<" Failed:"<<failed<<"\n"; 
+    }
+
+    inline static void WriteDataToImageTest()
+    {
+        Image img = LoadImage("wallp.jpg");
+        auto data = Random::GetBytes(100);
+
+        SecFile::
     }
 };
 

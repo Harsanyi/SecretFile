@@ -40,8 +40,8 @@ void Update()
 	BeginDrawing();
 	ClearBackground(BG_COLOR);
 
-	//UnloadTexture(tex);
-	//tex = LoadTextureFromImage(newImg);
+	UnloadTexture(tex);
+	tex = LoadTextureFromImage(newImg);
 	DrawTexturePro(tex,
 		Rectangle{0,0, (float)(tex.width), (float)(tex.height)},
 		Rectangle{0,0,SCREEN_WIDTH,SCREEN_HEIGHT},
@@ -49,14 +49,12 @@ void Update()
 		0, WHITE);
 	
 	DrawFPS(10,10);
+	
 	auto valueText = std::format("{:.0f} %", noise);
 	float newNoise = noise;
 	GuiSlider(Rectangle{300,10,200,20}, "Noise", valueText.c_str(), &newNoise, 0,100);
 	if (newNoise != noise)
 	{
-		//noise = newNoise;
-		//SecFile::Randomize(origImg, newImg);
-		
 		Test::RunAllTests();
 	}
 	
