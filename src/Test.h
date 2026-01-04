@@ -20,9 +20,9 @@ public:
     
     inline static void GetMaskTest()
     {
-        std::vector<int> starts = {0,0,0,2,4};
-        std::vector<int> ends = {7,1,3,6,7};
-        std::vector<uint8_t> masks = {0b11111111,0b00000011,0b00001111,0b01111100,0b11110000};
+        std::vector<int> starts = {0,0,0,2,4,0,4};
+        std::vector<int> ends = {7,1,3,6,7,0,4};
+        std::vector<uint8_t> masks = {0b11111111,0b00000011,0b00001111,0b01111100,0b11110000,0b0000001,0b0001000};
 
         int failed = 0;
         int size = starts.size();
@@ -52,8 +52,8 @@ public:
         std::vector<uint8_t> values(amount);
         for (int i=0; i<amount; i++)
         {
-            starts[i] = Random::GetUint(7);
-            ends[i] = Random::GetUint(starts[i]+1,8);
+            starts[i] = Random::GetUint(8);
+            ends[i] = Random::GetUint(starts[i],8);
             values[i] = BitStream::GetMask(starts[i], ends[i]);
         }
     
@@ -86,8 +86,8 @@ public:
         std::vector<uint8_t> values(amount);
         for (int i=0; i<amount; i++)
         {
-            starts[i] = Random::GetUint(7);
-            ends[i] = Random::GetUint(starts[i]+1,8);
+            starts[i] = Random::GetUint(8);
+            ends[i] = Random::GetUint(starts[i],8);
             values[i] = Random::GetByte() & BitStream::GetMask(starts[i], ends[i]);
         }
 
@@ -134,8 +134,8 @@ public:
         std::vector<uint8_t> values(amount);
         for (int d=0; d<amount; d++)
         {
-            starts[d] = Random::GetUint(7);
-            ends[d] = Random::GetUint(starts[d]+1,8);
+            starts[d] = Random::GetUint(8);
+            ends[d] = Random::GetUint(starts[d],8);
     
             uint8_t value = Random::GetByte();
             uint8_t mask = BitStream::GetMask(starts[d], ends[d]);
@@ -173,7 +173,7 @@ public:
         int failed = 0;
         int dataLength = 50;
         int bitDepth = 4;
-        int targetLength = (8/bitDepth) * dataLength + 1;
+        int targetLength = (8/bitDepth) * dataLength * 2;
         for (int a=0; a<amount; a++)
         {
             //create source data
@@ -181,14 +181,14 @@ public:
             
             //create target data
             std::vector<uint8_t> target = Random::GetBytes(targetLength);
-            BitStream bs(target);
+            BitStream targetStream(target);
             
             //write data
-            bs.WriteBytes(0, 0, data, bitDepth);
+            targetStream.WriteBytes(0, 0, data, bitDepth);
             
             //read data
             int bitCount = dataLength * 8;
-            auto readed = bs.ReadBytes(0,0, bitCount, bitDepth);
+            auto readed = targetStream.ReadBytes(0,0, bitCount, bitDepth);
             
             //match data
             if (readed.size() != data.size())

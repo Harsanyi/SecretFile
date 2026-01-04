@@ -21,7 +21,8 @@ uint32_t Random::GetUint(const int max)
 
 uint32_t Random::GetUint(const int min, const int max)
 {
-    if (min >= max)return 0;
+    if (min >= max)return max;
+    
     int range = max - min;
     return GetUint(range)+min;
 }

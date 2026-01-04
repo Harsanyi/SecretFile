@@ -21,7 +21,7 @@ public:
     
     static void WriteBits(std::vector<uint8_t>& data, int bytePos, int start, int end, uint8_t value);
     void WriteBits(int bytePos, int start, int end, uint8_t value);
-    void WriteBytes(int bytePos, int bitPos, const std::vector<uint8_t>& bytes, int bitDepth);
+    void WriteBytes(int byteIndex, int bitIndex, const std::vector<uint8_t>& bytes, int bitDepth);
 
     int GetTotalSize(int bitDepth)const;
 };
