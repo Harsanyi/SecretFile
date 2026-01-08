@@ -106,13 +106,13 @@ void BitStream::WriteBits(int bytePos, int start, int end, uint8_t value)
     return WriteBits(this->data, bytePos, start, end, value);
 }
 
-void BitStream::WriteBytes(const std::vector<uint8_t>& bytes, int bitDepth)
+void BitStream::WriteBytes(int byteIndex, int bitIndex, const std::vector<uint8_t>& bytes, int bitDepth)
 {
-    int byteIndex = 0;
-    int bitIndex = 0;
-    
-    int totalSize = GetTotalSize(bitDepth);
-    int avaiableSize = totalSize - (byteIndex * bitDepth - (bitIndex > bitDepth ? bitIndex-bitDepth : 0));
+    bitIndex = std::max(bitIndex, 8-bitDepth);
+
+    int totalSize = data.size()*8;
+    int occupied = byteIndex*8;
+    int avaiableSize = totalSize-occupied;
     int requireSize = bytes.size() * 8;
     if (avaiableSize < requireSize)
         throw std::out_of_range(std::format("Not enough space in file! avaiable:{} required:{}", avaiableSize, requireSize));
@@ -126,8 +126,8 @@ void BitStream::WriteBytes(const std::vector<uint8_t>& bytes, int bitDepth)
     while (writed < requireSize && byteIndex < data.size())
     {
         //get indexes
-        byteIndex = writed / bitDepth;
-        bitIndex = writed % bitDepth;
+        byteIndex = (writed+occupied) / bitDepth;
+        bitIndex = (writed+occupied) % bitDepth;
         srcByteIndex = writed / 8;
         srcBitIndex = writed % 8;
 

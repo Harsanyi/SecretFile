@@ -196,7 +196,7 @@ public:
         BitStream targetStream(target);
             
         //write data
-        targetStream.WriteBytes(data, bitDepth);
+        targetStream.WriteBytes(0,0, data, bitDepth);
             
         //read data
         int bitCount = dataLength * 8;

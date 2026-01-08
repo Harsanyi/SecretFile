@@ -9,7 +9,7 @@ void SecFile::WriteDataToImage(Image& img, const std::vector<uint8_t>& data, int
 {
     auto colors = ImageToByteVector(img);
     BitStream bs(colors);
-    bs.WriteBytes(data, bitDepth);
+    bs.WriteBytes(0, 0, data, bitDepth);
     std::memcpy(img.data, bs.data.data(), colors.size());
 }
 
