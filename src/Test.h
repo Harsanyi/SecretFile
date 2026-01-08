@@ -227,9 +227,27 @@ public:
     inline static void WriteDataToImageTest()
     {
         Image img = LoadImage("wallp.jpg");
-        auto data = Random::GetBytes(100);
+        int amount = 100;
+        std::vector<uint8_t> data = Random::GetBytes(amount);
+        ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
 
-        SecFile::
+        int bitDepth = 4;
+        SecFile::WriteDataToImage(img, data, bitDepth);
+        auto result = SecFile::ReadDataFromImage(img, bitDepth, data.size()*8);
+
+        int fails = 0;
+        for (int d = 0; d < result.size(); d++)
+        {
+            if (data[d] != result[d])
+            {
+                std::cout << "Error at:"<< d << " - expected:"<< std::bitset<8>(data[d])
+                          << " got:" << std::bitset<8>(result[d]) << "\n";
+                fails++;
+            }
+        }
+
+        UnloadImage(img);
+        std::cout << "Read / Write to image test ended! Amount:" << amount << " Failed:" << fails << "\n";
     }
 };
 

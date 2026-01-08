@@ -40,13 +40,13 @@ void Update()
 	BeginDrawing();
 	ClearBackground(BG_COLOR);
 
-	UnloadTexture(tex);
-	tex = LoadTextureFromImage(newImg);
-	DrawTexturePro(tex,
-		Rectangle{0,0, (float)(tex.width), (float)(tex.height)},
-		Rectangle{0,0,SCREEN_WIDTH,SCREEN_HEIGHT},
-		Vector2{0,0},
-		0, WHITE);
+	//UnloadTexture(tex);
+	//tex = LoadTextureFromImage(newImg);
+	//DrawTexturePro(tex,
+	//	Rectangle{0,0, (float)(tex.width), (float)(tex.height)},
+	//	Rectangle{0,0,SCREEN_WIDTH,SCREEN_HEIGHT},
+	//	Vector2{0,0},
+	//	0, WHITE);
 	
 	DrawFPS(10,10);
 	
