@@ -5,6 +5,9 @@
 
 struct UITransform
 {
+protected:
+    ~UITransform() = default;
+
 public:
     Rectangle rect;
 };

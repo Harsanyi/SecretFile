@@ -4,6 +4,9 @@
 
 struct UIButton : UIDrawable
 {
+protected:
+    ~UIButton() = default;
+
 public:
     char* label = (char*)"Button";
     Event<> onClick;
