@@ -6,15 +6,21 @@
 
 #include "Random.h"
 
-BitStream::BitStream(std::vector<uint8_t>& data) : data(data)
+BitStream::BitStream(std::vector<uint8_t>& data, uint8_t bitDepth) : data(data)
 {
     position = 0;
+    this->bitDepth = bitDepth;
 }
 
-void BitStream::Pos2Indexes(const int pos, int& byteIndex, int& bitIndex)
+void BitStream::Pos2Indexes(const uint64_t pos, int& byteIndex, int& bitIndex)
 {
     byteIndex = pos / 8;
     bitIndex = pos % 8;
+}
+
+uint64_t BitStream::Indexes2Pos(const int byteIndex, const int bitIndex)
+{
+    return byteIndex * 8 + bitIndex;
 }
 
 uint8_t BitStream::GetMask(const int start, const int end)
@@ -44,11 +50,8 @@ uint8_t BitStream::ReadBits(int bytePos, int start, int end) const
     return ReadBits(this->data, bytePos, start, end);
 }
 
-std::vector<uint8_t> BitStream::ReadBytes(int bitCount, int bitDepth) const
+std::vector<uint8_t> BitStream::ReadBytes(int byteIndex, int bitIndex, uint64_t bitCount)
 {
-    int byteIndex = 0;
-    int bitIndex = 0;
-    
     if (byteIndex >= data.size())throw std::out_of_range("BitStream::ReadBytes");
     if (bitIndex >= 8)throw std::out_of_range("BitStream::ReadBytes");
 
@@ -57,11 +60,12 @@ std::vector<uint8_t> BitStream::ReadBytes(int bitCount, int bitDepth) const
     int readed = 0;
     int resByteIndex = 0;
     int resBitIndex = 0;
+    int occupied = byteIndex * 8;
     while (readed < bitCount || byteIndex >= data.size())
     {
         //get bounds
-        byteIndex = readed / bitDepth;
-        bitIndex = readed % bitDepth;
+        byteIndex = (readed + occupied) / bitDepth;
+        bitIndex = (readed + occupied) % bitDepth;
         resByteIndex = readed / 8;
         resBitIndex = readed % 8;
         int canRead = 8 - std::max(resBitIndex, bitIndex);
@@ -86,7 +90,16 @@ std::vector<uint8_t> BitStream::ReadBytes(int bitCount, int bitDepth) const
         readed += canRead;
     }
 
+    position = Indexes2Pos(byteIndex, bitIndex);
+    
     return result;
+}
+
+std::vector<uint8_t> BitStream::ReadBytes(uint64_t bitCount)
+{
+    int byteIndex, bitIndex;
+    Pos2Indexes(position, byteIndex, bitIndex);
+    return ReadBytes(byteIndex, bitIndex, bitCount);
 }
 
 void BitStream::WriteBits(std::vector<uint8_t>& data, int bytePos, int start, int end, uint8_t value)
@@ -106,7 +119,7 @@ void BitStream::WriteBits(int bytePos, int start, int end, uint8_t value)
     return WriteBits(this->data, bytePos, start, end, value);
 }
 
-void BitStream::WriteBytes(int byteIndex, int bitIndex, const std::vector<uint8_t>& bytes, int bitDepth)
+void BitStream::WriteBytes(int byteIndex, int bitIndex, const std::vector<uint8_t>& bytes)
 {
     bitIndex = std::max(bitIndex, 8-bitDepth);
 
@@ -122,7 +135,7 @@ void BitStream::WriteBytes(int byteIndex, int bitIndex, const std::vector<uint8_
     int writed = 0;
 
     auto srcData = bytes;
-    BitStream bs(srcData);
+    BitStream bs(srcData, bitDepth);
     while (writed < requireSize && byteIndex < data.size())
     {
         //get indexes
@@ -153,6 +166,30 @@ void BitStream::WriteBytes(int byteIndex, int bitIndex, const std::vector<uint8_
         //apply changes
         writed += canWrite;
     }
+
+    position = Indexes2Pos(byteIndex, bitIndex);
+}
+
+void BitStream::WriteBytes(const std::vector<uint8_t>& bytes)
+{
+    int byteIndex, bitIndex;
+    Pos2Indexes(position, byteIndex, bitIndex);
+    WriteBytes(byteIndex, bitIndex, bytes);
+}
+
+void BitStream::WriteUInt64(const uint64_t value)
+{
+    std::vector<uint8_t> bytes(sizeof(uint64_t));
+    std::memcpy(bytes.data(), &value, sizeof(uint64_t));
+    WriteBytes(bytes);
+}
+
+uint64_t BitStream::ReadUInt64()
+{
+    auto readed = ReadBytes(sizeof(uint64_t)*8);
+    uint64_t result;
+    std::memcpy(&result, readed.data(), sizeof(uint64_t));
+    return result;
 }
 
 int BitStream::GetTotalSize(int bitDepth) const

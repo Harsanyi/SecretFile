@@ -49,7 +49,8 @@ public:
         //create stream
         int amount = 100;
         std::vector<uint8_t> data(amount);
-        BitStream bs(data);
+        uint8_t bitDepth = 8;
+        BitStream bs(data, bitDepth);
     
         //crete datas
         std::vector<int> starts(amount);
@@ -105,7 +106,7 @@ public:
             data[i] &= ~BitStream::GetMask(starts[i], ends[i]);
             data[i] |= values[i];
         }
-        BitStream bs(values);
+        BitStream bs(values, 8);
         
         //the test
         int failed = 0;
@@ -138,7 +139,7 @@ public:
         {
             data[d] = Random::GetByte();
         }
-        BitStream bs(data);
+        BitStream bs(data, 8);
     
         //create values
         std::vector<int> starts(amount);
@@ -185,25 +186,29 @@ public:
         int amount = 100;
         int failed = 0;
         int dataLength = 50;
-        int bitDepth = 4;
-        int targetLength = (8/bitDepth) * dataLength * 2;
+        uint8_t bitDepth = 4;
+        int targetLength = (8/bitDepth) * dataLength * 10;
 
         //create source data
-        std::vector<uint8_t> data = Random::GetBytes(dataLength);
+        std::vector<uint8_t> dataA = Random::GetBytes(dataLength);
+        std::vector<uint8_t> dataB = Random::GetBytes(dataLength);
             
         //create target data
         std::vector<uint8_t> target = Random::GetBytes(targetLength);
-        BitStream targetStream(target);
+        BitStream targetStream(target, bitDepth);
             
         //write data
-        targetStream.WriteBytes(0,0, data, bitDepth);
+        targetStream.WriteBytes(dataA);
+        targetStream.WriteBytes(dataB);
             
         //read data
         int bitCount = dataLength * 8;
-        auto readed = targetStream.ReadBytes(bitCount, bitDepth);
+        targetStream.position = 0;
+        auto readedA = targetStream.ReadBytes(bitCount);
+        auto readedB = targetStream.ReadBytes(bitCount);
             
         //match data
-        if (readed.size() != data.size())
+        if (readedA.size() != dataA.size() || readedB.size() != dataB.size())
         {
             std::cout << "ERROR! readed size not match data size!\n";
             failed++;
@@ -212,15 +217,15 @@ public:
 
         for (int d=0; d<dataLength; d++)
         {
-            if (data[d] != readed[d])
+            if (dataA[d] != readedA[d] || dataB[d] != readedB[d])
             {
                 std::cout << "ERROR! i:"<<d
-                <<" expected:"<< std::bitset<8>(data[d])
-                <<" got:"<< std::bitset<8>(readed[d])<<"\n";
+                <<" expected:"<< std::bitset<8>(dataA[d])
+                <<" got:"<< std::bitset<8>(readedA[d])<<"\n";
                 failed++;
             }
         }
-
+        
         std::cout << "Read-Write Bytes Test Ended! Runs:"<<amount<<" Failed:"<<failed<<"\n"; 
     }
 
@@ -231,9 +236,9 @@ public:
         std::vector<uint8_t> data = Random::GetBytes(amount);
         ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
 
-        int bitDepth = 4;
+        uint8_t bitDepth = 4;
         SecFile::WriteDataToImage(img, data, bitDepth);
-        auto result = SecFile::ReadDataFromImage(img, bitDepth, data.size()*8);
+        auto result = SecFile::ReadDataFromImage(img, bitDepth);
 
         int fails = 0;
         for (int d = 0; d < result.size(); d++)

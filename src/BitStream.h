@@ -5,25 +5,31 @@
 class BitStream
 {
 private:
-    static void Pos2Indexes(const int pos, int& byteIndex, int& bitIndex);
+    static void Pos2Indexes(const uint64_t pos, int& byteIndex, int& bitIndex);
+    static uint64_t Indexes2Pos(const int byteIndex, const int bitIndex);
     
 public:
     std::vector<uint8_t>& data;
-    int position = 0;
+    uint64_t position = 0;
+    uint8_t bitDepth = 4;
     
-    BitStream(std::vector<uint8_t>& data);
+    BitStream(std::vector<uint8_t>& data, uint8_t bitDepth);
 
     static uint8_t GetMask(const int start, const int end);
+    int GetTotalSize(int bitDepth)const;
 
     static uint8_t ReadBits(const std::vector<uint8_t>& data, int bytePos, int start, int end);
-    uint8_t ReadBits(int bytePos, int start, int end) const;
-    
-    std::vector<uint8_t> ReadBytes(int bitCount, int bitDepth) const;
-    
     static void WriteBits(std::vector<uint8_t>& data, int bytePos, int start, int end, uint8_t value);
+    
+    uint8_t ReadBits(int bytePos, int start, int end) const;
     void WriteBits(int bytePos, int start, int end, uint8_t value);
+    
+    std::vector<uint8_t> ReadBytes(int byteIndex, int bitIndex, uint64_t bitCount);
+    void WriteBytes(int byteIndex, int bitIndex, const std::vector<uint8_t>& bytes);
+    
+    std::vector<uint8_t> ReadBytes(uint64_t bitCount);
+    void WriteBytes(const std::vector<uint8_t>& bytes);
 
-    void WriteBytes(int byteIndex, int bitIndex, const std::vector<uint8_t>& bytes, int bitDepth);
-
-    int GetTotalSize(int bitDepth)const;
+    void WriteUInt64(const uint64_t value);
+    uint64_t ReadUInt64();
 };
