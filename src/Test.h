@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 
+#include "Event.h"
 #include "Random.h"
 
 class Test
@@ -16,6 +17,7 @@ public:
         ReadWriteSingleBitsTest();
         ReadWriteBytesTest();
         WriteDataToImageTest();
+        EventTest();
         std::cout << "Finished Tests ------\n";
     }
     
@@ -253,6 +255,35 @@ public:
 
         UnloadImage(img);
         std::cout << "Read / Write to image test ended! Amount:" << amount << " Failed:" << fails << "\n";
+    }
+
+    inline static void EventTest()
+    {
+        Event<int> intEvent;
+        std::cout << "Invoke with 10, wait 10\n";
+        intEvent.Add(SayInt);
+        intEvent.Invoke(10);
+        std::cout << "Added double. wait 10,20\n";
+        intEvent.Add(SayIntDouble);
+        intEvent.Invoke(10);
+        std::cout << "Remove say int. wait 20\n";
+        intEvent.Remove(SayInt);
+        intEvent.Invoke(10);
+        std::cout << "Removed say double. wait --\n";
+        intEvent.Remove(SayIntDouble);
+        intEvent.Invoke(10);
+    }
+
+private:
+    inline static void SayInt(int value)
+    {
+        std::cout << value << "\n";
+    }
+
+    inline static void SayIntDouble(int value)
+    {
+        value *= 2;
+        SayInt(value);
     }
 };
 

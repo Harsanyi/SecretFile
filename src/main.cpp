@@ -8,6 +8,7 @@
 #include "resource_dir.h"
 #include "SecFile.h"
 #include "Test.h"
+#include "UIElements/UIButton.h"
 
 const Color BG_COLOR = {44,44,44,255};
 const int FPS = 60;
@@ -22,6 +23,14 @@ Image newImg;
 Texture2D tex;
 float noise = 0;
 
+UIButton testButton;
+
+void OnTestButtonClick()
+{
+	std::cout << "OnTestButtonClick" << std::endl;
+	Test::RunAllTests();
+}
+
 void Init()
 {
 	SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
@@ -33,6 +42,9 @@ void Init()
 	origImg = LoadImage("wallp.jpg");
 	ImageFormat(&origImg, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
 	newImg = ImageCopy(origImg);
+
+	testButton.label = (char*)"Test Button";
+	testButton.onClick.Add(OnTestButtonClick);
 }
 
 void Update()
@@ -40,23 +52,7 @@ void Update()
 	BeginDrawing();
 	ClearBackground(BG_COLOR);
 
-	//UnloadTexture(tex);
-	//tex = LoadTextureFromImage(newImg);
-	//DrawTexturePro(tex,
-	//	Rectangle{0,0, (float)(tex.width), (float)(tex.height)},
-	//	Rectangle{0,0,SCREEN_WIDTH,SCREEN_HEIGHT},
-	//	Vector2{0,0},
-	//	0, WHITE);
-	
-	DrawFPS(10,10);
-	
-	auto valueText = std::format("{:.0f} %", noise);
-	float newNoise = noise;
-	GuiSlider(Rectangle{300,10,200,20}, "Noise", valueText.c_str(), &newNoise, 0,100);
-	if (newNoise != noise)
-	{
-		Test::RunAllTests();
-	}
+	testButton.Draw();
 	
 	EndDrawing();
 }
