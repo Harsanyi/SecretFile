@@ -2,8 +2,10 @@
 #include <iostream>
 #include <string>
 
+#include "BitStream.h"
 #include "Event.h"
 #include "Random.h"
+#include "SecFile.h"
 
 class Test
 {    

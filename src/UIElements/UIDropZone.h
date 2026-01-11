@@ -1,11 +1,13 @@
 ﻿#pragma once
-#include "UIDrawable.h"
+#include <string>
 
-struct UIDropZone : UIDrawable
+#include "Event.h"
+#include "UIElement.h"
+
+class UIDropZone : public UIElement
 {
-    virtual ~UIDropZone() = default;
 public:
-    Color color;
+    Event<std::string> onFileDropped;
     
     void Draw() override;
 };

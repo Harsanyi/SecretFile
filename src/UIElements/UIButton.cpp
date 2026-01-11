@@ -2,13 +2,9 @@
 
 #include "raygui.h"
 
-UIButton::UIButton(){}
-
-UIButton::UIButton(Rectangle rect, char* label) : rect(rect), label(label){}
-
 void UIButton::Draw()
 {
-    if (GuiButton(rect, label))
+    if (GuiButton(rect, label.c_str()))
     {
         onClick.Invoke();
     }

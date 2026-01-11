@@ -1,19 +1,16 @@
 ﻿#pragma once
+#include <string>
+
 #include "Event.h"
-#include "UIDrawable.h"
+#include "UIElement.h"
 
-struct UIButton : UIDrawable
+class UIButton : public UIElement
 {
-protected:
-    ~UIButton() = default;
-
 public:
-    char* label = (char*)"Button";
+    std::string label;
     Event<> onClick;
-    Rectangle rect{10,10,100,25};
 
-    UIButton();
-    UIButton(Rectangle rect, char* label);
+    UIButton(){label = "Button";}
     
     void Draw() override;
 };
