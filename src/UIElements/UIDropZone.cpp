@@ -11,24 +11,23 @@ UIDropZone::UIDropZone()
 
     dropImage = UIImage();
     dropImage.texture = dropTexture;
-    dropImage.transform.position = {150,100};
-    dropImage.transform.size = {200,200};
+    dropImage.transform.SetPosition({150,100});
+    dropImage.transform.SetPivot({0.5,0.5});
+    dropImage.transform.SetSize({200,200});
+    dropImage.transform.SetParent(&this->transform);
     dropImage.color = BLACK;
-
-    dropImage.SetParent(this);
 }
 
 void UIDropZone::Draw()
 {
-    DrawRectangle(transform.position.x, transform.position.y, transform.size.x, transform.size.y, WHITE);
-    
-    DrawTexturePro(dropTexture, Rectangle{0.,0.,(float)dropTexture.width, (float)dropTexture.height}, Rectangle{}, Vector2{0.5,0.5}, 0., BLACK);
+    Rectangle rect = transform.GetGlobalRect();
+    DrawRectangle(rect.x, rect.y, rect.width, rect.height, WHITE);
     dropImage.Draw();
     
     if (IsFileDropped())
     {
         auto files = LoadDroppedFiles();
-        if (CheckCollisionPointRec(GetMousePosition(), transform.GetRect()))
+        if (CheckCollisionPointRec(GetMousePosition(), transform.GetLocalRect()))
         {
             onFileDropped.Invoke(files.paths[0]);
         }

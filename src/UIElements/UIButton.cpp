@@ -4,7 +4,7 @@
 
 void UIButton::Draw()
 {
-    if (GuiButton(transform.GetRect(), label.c_str()))
+    if (GuiButton(transform.GetGlobalRect(), label.c_str()))
     {
         onClick.Invoke();
     }

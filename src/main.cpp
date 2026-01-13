@@ -40,14 +40,14 @@ void Init()
 	SetTargetFPS(FPS);
 
 	testButton = UIButton();
-	testButton.transform.position = {1170,10};
-	testButton.transform.size = {100, 25};
+	testButton.transform.SetPosition({1170,10});
+	testButton.transform.SetSize({100, 25});
 	testButton.label = "Run All Tests";
 	testButton.onClick.Add(OnTestButtonClick);
 
 	dropZone = UIDropZone();
-	dropZone.transform.position = {10,10};
-	dropZone.transform.size = {300,200};
+	dropZone.transform.SetPosition({100,100});
+	dropZone.transform.SetSize({300,200});
 	dropZone.onFileDropped.Add(OnFileDropped);
 }
 
