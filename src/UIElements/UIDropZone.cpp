@@ -8,12 +8,11 @@ UIDropZone::UIDropZone()
     {
         dropTexture = LoadTexture("drop-icon.png");
     }
-
-    dropImage = UIImage();
+    
     dropImage.texture = dropTexture;
-    dropImage.transform.SetPosition({150,100});
     dropImage.transform.SetPivot({0.5,0.5});
-    dropImage.transform.SetSize({200,200});
+    dropImage.transform.SetPosition({150,100});
+    dropImage.transform.SetSize({100,100});
     dropImage.transform.SetParent(&this->transform);
     dropImage.color = BLACK;
 }
@@ -27,7 +26,7 @@ void UIDropZone::Draw()
     if (IsFileDropped())
     {
         auto files = LoadDroppedFiles();
-        if (CheckCollisionPointRec(GetMousePosition(), transform.GetLocalRect()))
+        if (CheckCollisionPointRec(GetMousePosition(), rect))
         {
             onFileDropped.Invoke(files.paths[0]);
         }

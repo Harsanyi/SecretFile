@@ -4,6 +4,7 @@
 #include <__msvc_ostream.hpp>
 
 #include "Extensions.h"
+#include "UIImage.h"
 
 Rectangle UIRectTransform::GetLocalRect() const
 {
@@ -18,7 +19,6 @@ Rectangle UIRectTransform::GetGlobalRect() const
     }
 
     Rectangle parentRect = parent->GetGlobalRect();
-    std::cout << "Have valid parent: x:"<<parentRect.x<<" y:"<<parentRect.y<<" w:"<<parentRect.width<<" h:"<<parentRect.height<<"\n";
     return {parentRect.x + rect.x, parentRect.y + rect.y, rect.width, rect.height};
 }
 
@@ -38,7 +38,7 @@ void UIRectTransform::SetPosition(const Vector2& locPosition)
 
 Vector2 UIRectTransform::GetPosition() const
 {
-    return {rect.x - rect.width * pivot.x,rect.y - rect.height * pivot.y};
+    return {rect.x + rect.width * pivot.x,rect.y + rect.height * pivot.y};
 }
 
 void UIRectTransform::SetPivot(const Vector2& locPivot)

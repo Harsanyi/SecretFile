@@ -17,8 +17,8 @@ const char* WINDOW_TITLE = "SecretFile";
 const char* RESOURCE_DIR = "resources";
 const char* GUI_STYLE_PATH = "styles/jungle/style_jungle.rgs";
 
-UIButton testButton;
-UIDropZone dropZone;
+UIButton* testButton;
+UIDropZone* dropZone;
 
 void OnTestButtonClick()
 {
@@ -39,16 +39,17 @@ void Init()
 	GuiLoadStyle(GUI_STYLE_PATH);
 	SetTargetFPS(FPS);
 
-	testButton = UIButton();
-	testButton.transform.SetPosition({1170,10});
-	testButton.transform.SetSize({100, 25});
-	testButton.label = "Run All Tests";
-	testButton.onClick.Add(OnTestButtonClick);
+	testButton = new UIButton();
+	testButton->transform.SetPosition({1170,10});
+	testButton->transform.SetSize({100, 25});
+	testButton->label = "Run All Tests";
+	testButton->onClick.Add(OnTestButtonClick);
 
-	dropZone = UIDropZone();
-	dropZone.transform.SetPosition({100,100});
-	dropZone.transform.SetSize({300,200});
-	dropZone.onFileDropped.Add(OnFileDropped);
+	dropZone = new UIDropZone();
+	dropZone->transform.SetPivot({0.,0.});
+	dropZone->transform.SetPosition({10,10});
+	dropZone->transform.SetSize({300,200});
+	dropZone->onFileDropped.Add(OnFileDropped);
 }
 
 void Update()
@@ -56,8 +57,8 @@ void Update()
 	BeginDrawing();
 	ClearBackground(BG_COLOR);
 
-	testButton.Draw();
-	dropZone.Draw();
+	testButton->Draw();
+	dropZone->Draw();
 	
 	EndDrawing();
 }
@@ -70,6 +71,8 @@ int main ()
 	{
 		Update();
 	}
+
+	delete dropZone;
 	
 	CloseWindow();
 	

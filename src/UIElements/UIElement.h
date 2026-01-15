@@ -7,7 +7,8 @@
 class UIElement
 {
 public:
-    UIRectTransform transform = UIRectTransform();
+    virtual ~UIElement() = default;
+    UIRectTransform transform;
     
     virtual void Draw() = 0;
 };
