@@ -192,6 +192,70 @@ uint64_t BitStream::ReadUInt64()
     return result;
 }
 
+void BitStream::WriteData(const std::vector<uint8_t>& data)
+{
+    WriteUInt64(data.size());
+    WriteBytes(data);
+}
+
+std::vector<uint8_t> BitStream::ReadData()
+{
+    long size = ReadUInt64();
+    return ReadBytes(size*8);
+}
+
+void BitStream::WriteString(const std::string& str)
+{
+    WriteUInt64(str.size());
+    std::vector<uint8_t> bytes(str.begin(),str.end());
+    WriteBytes(bytes);
+}
+
+std::string BitStream::ReadString()
+{
+    long size = ReadUInt64();
+    std::vector<uint8_t> bytes = ReadBytes(size*8);
+    return std::string(bytes.begin(),bytes.end());
+}
+
+void BitStream::WriteFileData(const FileData& data)
+{
+    WriteString(data.fileName);
+    WriteData(data.data);
+}
+
+FileData BitStream::ReadFileData()
+{
+    return FileData(ReadString(),ReadData());
+}
+
+void BitStream::WriteContainer(const Container& container)
+{
+    WriteString("Container");
+    WriteUInt64(container.files.size());
+    for (int f=0;f<container.files.size();f++)
+    {
+        WriteFileData(container.files[f]);
+    }
+}
+
+Container* BitStream::ReadContainer()
+{
+    std::string key = ReadString();
+    if (key != "Container")
+    {
+        return nullptr;
+    }
+    
+    int size = ReadUInt64();
+    Container result;
+    for (int f=0;f<size;f++)
+    {
+        result.files.push_back(ReadFileData());
+    }
+    return new Container(result);
+}
+
 int BitStream::GetTotalSize(int bitDepth) const
 {
     return data.size()*bitDepth;

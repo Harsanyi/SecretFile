@@ -43,3 +43,19 @@ void SecFile::WriteDataToTexture(Texture2D& texture, const std::vector<uint8_t>&
     texture = LoadTextureFromImage(img);
     UnloadImage(img);
 }
+
+Container* SecFile::GetContentFromTexture(Texture2D& texture, uint8_t& bitDepth)
+{
+    Image img = LoadImageFromTexture(texture);
+    ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    Container* cont = GetContentFromImage(img, bitDepth);
+    UnloadImage(img);
+    return cont;
+}
+
+Container* SecFile::GetContentFromImage(Image& img, uint8_t bitDepth)
+{
+    std::vector<uint8_t> imgData = ImageToByteVector(img);
+    BitStream bs(imgData,bitDepth);
+    return bs.ReadContainer();
+}

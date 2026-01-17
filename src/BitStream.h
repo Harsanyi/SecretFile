@@ -1,6 +1,10 @@
 ﻿#pragma once
 #include <cstdint>
+#include <string>
 #include <vector>
+
+#include "Container.h"
+#include "FileData.h"
 
 class BitStream
 {
@@ -32,4 +36,16 @@ public:
 
     void WriteUInt64(const uint64_t value);
     uint64_t ReadUInt64();
+
+    void WriteData(const std::vector<uint8_t>& data);
+    std::vector<uint8_t> ReadData();
+
+    void WriteString(const std::string& str);
+    std::string ReadString();
+
+    void WriteFileData(const FileData& data);
+    FileData ReadFileData();
+
+    void WriteContainer(const Container& container);
+    Container* ReadContainer();
 };

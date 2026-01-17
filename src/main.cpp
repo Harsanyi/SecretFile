@@ -7,6 +7,7 @@
 #include "resource_dir.h"
 #include "Test.h"
 #include "UIElements/UIButton.h"
+#include "UIElements/UIContainer.h"
 #include "UIElements/UIDropZone.h"
 #include "UIElements/UIImageDropZone.h"
 #include "UIElements/UISlider.h"
@@ -27,6 +28,9 @@ Texture2D* originalImage;
 Texture2D* previewImage;
 UIButton* saveButton;
 UIText* sizeText;
+UIButton* openButton;
+Container* content;
+UIContainer* containerUI;
 
 void OnTestButtonClick()
 {
@@ -94,6 +98,17 @@ void OnSaveButtonClick()
 	std::cout << "Image Saved!" << std::endl;
 }
 
+void OnOpenButtonClick()
+{
+	std::cout << "OnOpenButtonClick" << std::endl;
+	if (originalImage == nullptr) return;
+
+	uint8_t bitDepth = bitSlider->value;
+	if (content != nullptr)delete content;
+	content = SecFile::GetContentFromTexture(*originalImage, bitDepth);
+	if (content == nullptr)content = new Container();
+}
+
 void Init()
 {
 	SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
@@ -134,6 +149,16 @@ void Init()
 	sizeText->transform.SetPosition({10,290});
 	sizeText->transform.SetSize({200,25});
 	sizeText->text = "Container size: ?";
+
+	openButton = new UIButton();
+	openButton->transform.SetPosition({10,325});
+	openButton->transform.SetSize({100,25});
+	openButton->label = "Open";
+	openButton->onClick.Add(OnOpenButtonClick);
+
+	containerUI = new UIContainer();
+	containerUI->transform.SetPosition({410.,10});
+	containerUI->transform.SetSize({600,600});
 }
 
 void Update()
