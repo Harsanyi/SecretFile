@@ -29,3 +29,17 @@ std::vector<uint8_t> SecFile::ImageToByteVector(const Image& img)
     uint8_t* colors = static_cast<uint8_t*>(img.data);
     return  std::vector<uint8_t>(colors, colors + byteCount);
 }
+
+long SecFile::GetSizeInBytes(Texture2D* texture, int bitDepth)
+{
+    return texture->width * texture->height * 4 * bitDepth / 8 - 100;
+}
+
+void SecFile::WriteDataToTexture(Texture2D& texture, const std::vector<uint8_t>& data, uint8_t bitDepth)
+{
+    Image img = LoadImageFromTexture(texture);
+    ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    WriteDataToImage(img, data, bitDepth);
+    texture = LoadTextureFromImage(img);
+    UnloadImage(img);
+}

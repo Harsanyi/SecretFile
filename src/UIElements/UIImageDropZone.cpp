@@ -10,9 +10,9 @@ void UIImageDropZone::OnFileDropped(char* filePath)
     std::string ext = path.extension().string();
     if (!Contains(FORMATS, ext))return;
     
-    droppedTexture = LoadTexture(filePath);
+    texture = new Texture2D(LoadTexture(filePath));
     haveTexture = true;
-    onImageDropped.Invoke(&droppedTexture);
+    onImageDropped.Invoke(texture);
 }
 
 UIImageDropZone::UIImageDropZone()
@@ -28,8 +28,8 @@ void UIImageDropZone::Draw()
     if (haveTexture)
     {
         DrawTexturePro(
-            droppedTexture,
-            Rectangle{0,0, (float)droppedTexture.width, (float)droppedTexture.height},
+            *texture,
+            Rectangle{0,0, (float)texture->width, (float)texture->height},
             transform.GetGlobalRect(),
             {0.5,0.5},
             0,
@@ -40,4 +40,9 @@ void UIImageDropZone::Draw()
     {
         UIDropZone::Draw();
     }
+}
+
+void UIImageDropZone::SetTexture(Texture2D* texture)
+{
+    this->texture = texture;
 }

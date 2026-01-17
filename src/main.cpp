@@ -22,6 +22,8 @@ const char* GUI_STYLE_PATH = "styles/jungle/style_jungle.rgs";
 UIButton* testButton;
 UIImageDropZone* dropZone;
 UISlider* bitSlider;
+Texture2D* originalImage;
+Texture2D* previewImage;
 
 void OnTestButtonClick()
 {
@@ -32,11 +34,40 @@ void OnTestButtonClick()
 void OnImageDropped(Texture2D* img)
 {
 	std::cout << "OnImageDropped" << std::endl;
+	if (originalImage != nullptr)
+	{
+		UnloadTexture(*originalImage);
+		delete originalImage;
+	}
+	originalImage = img;
+}
+
+void SetImagePreviewToDepth(uint8_t depth)
+{
+	if (depth <= 0)
+	{
+		dropZone->SetTexture(originalImage);
+		return;
+	}
+	
+	long dataSize = SecFile::GetSizeInBytes(originalImage, depth);
+	std::vector<uint8_t> data = Random::GetBytes(dataSize);
+	if (previewImage != nullptr)
+	{
+		UnloadTexture(*previewImage);
+		delete previewImage;
+	}
+	previewImage = new Texture2D(*originalImage);
+	SecFile::WriteDataToTexture(*previewImage, data, depth);
+	dropZone->SetTexture(previewImage);
 }
 
 void OnBitDepthChanged(float bitDepth)
 {
 	std::cout << "OnBitDepthChanged:" << bitDepth << std::endl;
+	if (originalImage == nullptr) return;
+	int bits = std::round(bitDepth);
+	SetImagePreviewToDepth(bits);
 }
 
 void Init()
