@@ -30,9 +30,9 @@ std::vector<uint8_t> SecFile::ImageToByteVector(const Image& img)
     return  std::vector<uint8_t>(colors, colors + byteCount);
 }
 
-long SecFile::GetSizeInBytes(Texture2D* texture, int bitDepth)
+auto SecFile::GetSizeInBytes(Texture2D* texture, int bitDepth) -> long
 {
-    return texture->width * texture->height * 4 * bitDepth / 8 - 100;
+    return texture->width * texture->height * 4 * bitDepth / 8;
 }
 
 void SecFile::WriteDataToTexture(Texture2D& texture, const std::vector<uint8_t>& data, uint8_t bitDepth)

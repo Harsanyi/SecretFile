@@ -10,6 +10,7 @@
 #include "UIElements/UIDropZone.h"
 #include "UIElements/UIImageDropZone.h"
 #include "UIElements/UISlider.h"
+#include "UIElements/UIText.h"
 
 const Color BG_COLOR = {44,44,44,255};
 const int FPS = 60;
@@ -25,22 +26,12 @@ UISlider* bitSlider;
 Texture2D* originalImage;
 Texture2D* previewImage;
 UIButton* saveButton;
+UIText* sizeText;
 
 void OnTestButtonClick()
 {
 	std::cout << "OnTestButtonClick" << std::endl;
 	Test::RunAllTests();
-}
-
-void OnImageDropped(Texture2D* img)
-{
-	std::cout << "OnImageDropped" << std::endl;
-	if (originalImage != nullptr)
-	{
-		UnloadTexture(*originalImage);
-		delete originalImage;
-	}
-	originalImage = img;
 }
 
 void SetImagePreviewToDepth(uint8_t depth)
@@ -52,6 +43,7 @@ void SetImagePreviewToDepth(uint8_t depth)
 	}
 	
 	long dataSize = SecFile::GetSizeInBytes(originalImage, depth);
+	dataSize -= 100;
 	std::vector<uint8_t> data = Random::GetBytes(dataSize);
 	if (previewImage != nullptr)
 	{
@@ -63,12 +55,32 @@ void SetImagePreviewToDepth(uint8_t depth)
 	dropZone->SetTexture(previewImage);
 }
 
+void UpdateSizeText()
+{
+	long size = SecFile::GetSizeInBytes(originalImage, (int)bitSlider->value);
+	sizeText->text = std::format("Container size:{0}", size);
+}
+
 void OnBitDepthChanged(float bitDepth)
 {
 	std::cout << "OnBitDepthChanged:" << bitDepth << std::endl;
 	if (originalImage == nullptr) return;
 	int bits = std::round(bitDepth);
 	SetImagePreviewToDepth(bits);
+	UpdateSizeText();
+}
+
+void OnImageDropped(Texture2D* img)
+{
+	std::cout << "OnImageDropped" << std::endl;
+	if (originalImage != nullptr)
+	{
+		UnloadTexture(*originalImage);
+		delete originalImage;
+	}
+	originalImage = img;
+
+	OnBitDepthChanged(bitSlider->value);
 }
 
 void OnSaveButtonClick()
@@ -117,6 +129,11 @@ void Init()
 	saveButton->transform.SetSize({100,25});
 	saveButton->label = "Save Image";
 	saveButton->onClick.Add(OnSaveButtonClick);
+
+	sizeText = new UIText();
+	sizeText->transform.SetPosition({10,290});
+	sizeText->transform.SetSize({200,25});
+	sizeText->text = "Container size: ?";
 }
 
 void Update()
