@@ -24,6 +24,7 @@ UIImageDropZone* dropZone;
 UISlider* bitSlider;
 Texture2D* originalImage;
 Texture2D* previewImage;
+UIButton* saveButton;
 
 void OnTestButtonClick()
 {
@@ -70,6 +71,17 @@ void OnBitDepthChanged(float bitDepth)
 	SetImagePreviewToDepth(bits);
 }
 
+void OnSaveButtonClick()
+{
+	std::cout << "OnSaveButtonClick" << std::endl;
+	if (previewImage == nullptr) return;
+
+	Image img = LoadImageFromTexture(*previewImage);
+	ExportImage(img, "saveImg.png");
+	UnloadImage(img);
+	std::cout << "Image Saved!" << std::endl;
+}
+
 void Init()
 {
 	SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
@@ -99,6 +111,12 @@ void Init()
 	bitSlider->intValues=true;
 	bitSlider->label = "Bit Depth";
 	bitSlider->onValueChanged.Add(OnBitDepthChanged);
+
+	saveButton = new UIButton();
+	saveButton->transform.SetPosition({10,255});
+	saveButton->transform.SetSize({100,25});
+	saveButton->label = "Save Image";
+	saveButton->onClick.Add(OnSaveButtonClick);
 }
 
 void Update()
@@ -106,10 +124,8 @@ void Update()
 	BeginDrawing();
 	ClearBackground(BG_COLOR);
 
-	testButton->Draw();
-	dropZone->Draw();
-	bitSlider->Draw();
-	
+	UIElement::DrawAll();
+		
 	EndDrawing();
 }
 

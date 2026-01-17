@@ -6,9 +6,14 @@
 
 class UIElement
 {
+private:
+    static std::vector<UIElement*> instances;
+    
 public:
-    virtual ~UIElement() = default;
+    UIElement();
+    virtual ~UIElement();
     UIRectTransform transform;
     
     virtual void Draw() = 0;
+    static void DrawAll();
 };
