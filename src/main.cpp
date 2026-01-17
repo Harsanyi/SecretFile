@@ -9,6 +9,7 @@
 #include "UIElements/UIButton.h"
 #include "UIElements/UIDropZone.h"
 #include "UIElements/UIImageDropZone.h"
+#include "UIElements/UISlider.h"
 
 const Color BG_COLOR = {44,44,44,255};
 const int FPS = 60;
@@ -20,6 +21,7 @@ const char* GUI_STYLE_PATH = "styles/jungle/style_jungle.rgs";
 
 UIButton* testButton;
 UIImageDropZone* dropZone;
+UISlider* bitSlider;
 
 void OnTestButtonClick()
 {
@@ -30,6 +32,11 @@ void OnTestButtonClick()
 void OnImageDropped(Texture2D* img)
 {
 	std::cout << "OnImageDropped" << std::endl;
+}
+
+void OnBitDepthChanged(float bitDepth)
+{
+	std::cout << "OnBitDepthChanged:" << bitDepth << std::endl;
 }
 
 void Init()
@@ -51,6 +58,16 @@ void Init()
 	dropZone->transform.SetPosition({10,10});
 	dropZone->transform.SetSize({300,200});
 	dropZone->onImageDropped.Add(OnImageDropped);
+
+	bitSlider = new UISlider();
+	bitSlider->transform.SetPosition({100,220});
+	bitSlider->transform.SetSize({200,25});
+	bitSlider->min = 0;
+	bitSlider->max = 8;
+	bitSlider->value=1;
+	bitSlider->intValues=true;
+	bitSlider->label = "Bit Depth";
+	bitSlider->onValueChanged.Add(OnBitDepthChanged);
 }
 
 void Update()
@@ -60,6 +77,7 @@ void Update()
 
 	testButton->Draw();
 	dropZone->Draw();
+	bitSlider->Draw();
 	
 	EndDrawing();
 }
