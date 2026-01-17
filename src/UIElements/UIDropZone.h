@@ -7,15 +7,16 @@
 
 class UIDropZone : public UIElement
 {
-private:
+protected:
     static Texture2D dropTexture;
 
     UIImage dropImage;
     
 public:
-    Event<std::string> onFileDropped;
+    Event<char*> onFileDropped;
 
     UIDropZone();
     
     void Draw() override;
+    void CheckFileDropped();
 };

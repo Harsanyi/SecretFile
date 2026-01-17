@@ -7,17 +7,12 @@ template<typename... Args>
 class Event
 {
 private:
-    std::vector<void(*)(Args...)> calls;
+    std::vector<std::function<void(Args...)>> calls;
     
 public:
-    inline void Add(void(*f)(Args...))
+    inline void Add(std::function<void(Args...)> f)
     {
         calls.push_back(f);
-    }
-    
-    inline void Remove(void(*f)(Args...))
-    {
-        calls.erase(std::remove(calls.begin(), calls.end(), f),calls.end());
     }
     
     inline void Invoke(Args... args)

@@ -268,12 +268,6 @@ public:
         std::cout << "Added double. wait 10,20\n";
         intEvent.Add(SayIntDouble);
         intEvent.Invoke(10);
-        std::cout << "Remove say int. wait 20\n";
-        intEvent.Remove(SayInt);
-        intEvent.Invoke(10);
-        std::cout << "Removed say double. wait --\n";
-        intEvent.Remove(SayIntDouble);
-        intEvent.Invoke(10);
     }
 
 private:

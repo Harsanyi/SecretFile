@@ -8,6 +8,7 @@
 #include "Test.h"
 #include "UIElements/UIButton.h"
 #include "UIElements/UIDropZone.h"
+#include "UIElements/UIImageDropZone.h"
 
 const Color BG_COLOR = {44,44,44,255};
 const int FPS = 60;
@@ -18,7 +19,7 @@ const char* RESOURCE_DIR = "resources";
 const char* GUI_STYLE_PATH = "styles/jungle/style_jungle.rgs";
 
 UIButton* testButton;
-UIDropZone* dropZone;
+UIImageDropZone* dropZone;
 
 void OnTestButtonClick()
 {
@@ -26,9 +27,9 @@ void OnTestButtonClick()
 	Test::RunAllTests();
 }
 
-void OnFileDropped(std::string path)
+void OnImageDropped(Texture2D* img)
 {
-	std::cout << "OnFileDropped:" << path << std::endl;
+	std::cout << "OnImageDropped" << std::endl;
 }
 
 void Init()
@@ -45,11 +46,11 @@ void Init()
 	testButton->label = "Run All Tests";
 	testButton->onClick.Add(OnTestButtonClick);
 
-	dropZone = new UIDropZone();
+	dropZone = new UIImageDropZone();
 	dropZone->transform.SetPivot({0.,0.});
 	dropZone->transform.SetPosition({10,10});
 	dropZone->transform.SetSize({300,200});
-	dropZone->onFileDropped.Add(OnFileDropped);
+	dropZone->onImageDropped.Add(OnImageDropped);
 }
 
 void Update()

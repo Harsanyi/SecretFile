@@ -1,4 +1,6 @@
 ﻿#include "UIDropZone.h"
+#include "filesystem"
+namespace fs = std::filesystem;
 
 Texture2D UIDropZone::dropTexture;
 
@@ -22,13 +24,19 @@ void UIDropZone::Draw()
     Rectangle rect = transform.GetGlobalRect();
     DrawRectangle(rect.x, rect.y, rect.width, rect.height, WHITE);
     dropImage.Draw();
-    
+    CheckFileDropped();
+}
+
+void UIDropZone::CheckFileDropped()
+{
     if (IsFileDropped())
     {
         auto files = LoadDroppedFiles();
-        if (CheckCollisionPointRec(GetMousePosition(), rect))
+        if (CheckCollisionPointRec(GetMousePosition(), transform.GetGlobalRect()))
         {
-            onFileDropped.Invoke(files.paths[0]);
+            auto path = files.paths[0];
+            std::cout << "File Dropped:"<<path<<std::endl;
+            onFileDropped.Invoke(path);
         }
 
         UnloadDroppedFiles(files);
