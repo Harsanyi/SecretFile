@@ -1,6 +1,5 @@
 ﻿#pragma once
 #include <vector>
-
 #include "raylib.h"
 
 class UIRectTransform
@@ -20,7 +19,10 @@ public:
     Vector2 GetPosition() const;
     void SetPivot(const Vector2& locPivot);
     void SetSize(const Vector2& locSize);
+    Vector2 GetSize() const;
 
+    int ChildCount() const;
+    UIRectTransform* GetChildAt(int i)const;
     void RemoveChild(UIRectTransform* child);
     void AddChild(UIRectTransform* child);
     bool IsChild(UIRectTransform* child);

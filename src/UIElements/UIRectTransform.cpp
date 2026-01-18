@@ -30,6 +30,21 @@ void UIRectTransform::SetSize(const Vector2& locSize)
     SetPosition(pos);
 }
 
+Vector2 UIRectTransform::GetSize() const
+{
+    return {rect.width, rect.height};
+}
+
+int UIRectTransform::ChildCount() const
+{
+    return childs.size();
+}
+
+UIRectTransform* UIRectTransform::GetChildAt(int i) const
+{
+    return childs[i];
+}
+
 void UIRectTransform::SetPosition(const Vector2& locPosition)
 {
     rect.x = locPosition.x - rect.width * pivot.x;
