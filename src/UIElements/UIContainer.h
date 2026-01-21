@@ -7,11 +7,13 @@
 class UIContainer : public UIDropZone
 {
     UILayout layout;
+
+    void OnFileDropped(char* path);
     
 public:
     UIContainer();
     
     void Draw() override;
 
-    Container* container;
+    Container* container = nullptr;
 };

@@ -37,8 +37,7 @@ void UIDropZone::CheckFileDropped()
             auto path = files.paths[0];
             std::cout << "File Dropped:"<<path<<std::endl;
             onFileDropped.Invoke(path);
+            UnloadDroppedFiles(files);
         }
-
-        UnloadDroppedFiles(files);
     }
 }

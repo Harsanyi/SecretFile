@@ -3,6 +3,10 @@
 
 class UILayout : public UIElement
 {
+private:
+    void FitHorizontal();
+    void FitVertical();
+    
 public:
     struct Padding
     {
@@ -16,6 +20,8 @@ public:
     Align align = Align::HORIZONTAL;
     Padding padding = Padding();
     int space = 0;
+    bool fitHorizontal = true;
+    bool fitVertical = true;
     
     void Draw() override;
 };
