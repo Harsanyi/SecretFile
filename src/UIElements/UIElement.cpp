@@ -18,6 +18,6 @@ void UIElement::DrawAll()
 {
     for (int i = 0; i < instances.size(); ++i)
     {
-        if (instances[i] != nullptr)instances[i]->Draw();
+        if (instances[i] != nullptr && instances[i]->enabled)instances[i]->Draw();
     }
 }

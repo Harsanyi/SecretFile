@@ -13,6 +13,7 @@ public:
     UIElement();
     virtual ~UIElement();
     UIRectTransform transform;
+    bool enabled = true;
     
     virtual void Draw() = 0;
     static void DrawAll();
