@@ -20,7 +20,6 @@ const char* WINDOW_TITLE = "SecretFile";
 const char* RESOURCE_DIR = "resources";
 const char* GUI_STYLE_PATH = "styles/jungle/style_jungle.rgs";
 
-UIButton* testButton;
 UISlider* bitSlider;
 Texture2D* originalImage;
 Texture2D* previewImage;

@@ -1,7 +1,9 @@
-﻿#include "SecFileUI.h"
+﻿#pragma once
+
+#include "SecFileUI.h"
 
 #include <iostream>
-
+#include "raygui.h"
 #include "SecFile.h"
 
 SecFileUI::SecFileUI(SecFile* secFile, Vector2 screenSize)
@@ -13,6 +15,8 @@ SecFileUI::SecFileUI(SecFile* secFile, Vector2 screenSize)
 void SecFileUI::Draw()
 {
     DrawImageDropZone();
+    DrawTestButton();
+    DrawMenu();
 }
 
 void SecFileUI::DrawImageDropZone()
@@ -64,4 +68,20 @@ bool SecFileUI::IsFileDroppedInRect(const Rectangle& rect, std::string& path)
     }
 
     return false;
+}
+
+void SecFileUI::DrawTestButton()
+{
+    Vector2 size {100,25};
+    Rectangle rect {screenSize.x - size.x - padding, padding, size.x, size.y};
+    
+    if (GuiButton(rect, "Test") == 1)
+    {
+        std::cout << "Test" << std::endl;
+    }
+}
+
+void SecFileUI::DrawMenu()
+{
+    
 }

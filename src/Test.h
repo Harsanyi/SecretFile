@@ -1,7 +1,7 @@
-﻿#include <bitset>
-#include <iostream>
-#include <string>
+﻿#pragma once
 
+#include <bitset>
+#include <iostream>
 #include "BitStream.h"
 #include "Event.h"
 #include "Random.h"

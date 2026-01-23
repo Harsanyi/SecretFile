@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include "raylib.h"
 #include "SecFile.h"
 
 class SecFileUI
@@ -7,6 +6,8 @@ class SecFileUI
     SecFile* secFile;
     Vector2 screenSize;
     Texture2D* dropTexture;
+    float padding = 10;
+    float space = 5;
     
 public:
     SecFileUI(SecFile* secFile,Vector2 screenSize);
@@ -15,4 +16,6 @@ public:
     void DrawImageDropZone();
     Texture2D* GetDropTexture();
     bool IsFileDroppedInRect(const Rectangle& rect, std::string& path);
+    void DrawTestButton();
+    void DrawMenu();
 };
