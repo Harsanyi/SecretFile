@@ -8,6 +8,7 @@ class SecFileUI
     Texture2D* dropTexture;
     float padding = 10;
     float space = 5;
+    Texture2D* previewTexture;
     
 public:
     SecFileUI(SecFile* secFile,Vector2 screenSize);
@@ -18,4 +19,6 @@ public:
     bool IsFileDroppedInRect(const Rectangle& rect, std::string& path);
     void DrawTestButton();
     void DrawMenu();
+    void DrawBitSlider();
+    void UpdatePreview();
 };

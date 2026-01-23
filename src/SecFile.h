@@ -21,4 +21,5 @@ public:
     static Container* GetContentFromImage(Image& img, uint8_t bitDepth);
 
     Texture2D* loadedTexture = nullptr;
+    int bitDepth = 1;
 };

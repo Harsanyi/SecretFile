@@ -3,6 +3,9 @@
 #include "SecFileUI.h"
 
 #include <iostream>
+#include <sstream>
+
+#include "Random.h"
 #include "raygui.h"
 #include "SecFile.h"
 
@@ -28,12 +31,13 @@ void SecFileUI::DrawImageDropZone()
         std::cout << "Load file " << filePath << std::endl;
         if (secFile->loadedTexture != nullptr)UnloadTexture(*secFile->loadedTexture);
         secFile->loadedTexture = new Texture2D(LoadTexture(filePath.c_str()));
+        UpdatePreview();
     }
 
-    if (secFile->loadedTexture != nullptr)
+    if (previewTexture != nullptr)
     {
-        Rectangle source {0.f,0.f, (float)secFile->loadedTexture->width, (float)secFile->loadedTexture->height};
-        Texture2D tex = *secFile->loadedTexture;
+        Rectangle source {0.f,0.f, (float)previewTexture->width, (float)previewTexture->height};
+        Texture2D tex = *previewTexture;
         DrawTexturePro(tex, source, rect, {0.,0.}, 0., WHITE);
     }else
     {
@@ -83,5 +87,44 @@ void SecFileUI::DrawTestButton()
 
 void SecFileUI::DrawMenu()
 {
+    Vector2 size{160, 100};
+    Rectangle rect{padding, screenSize.y - padding - size.y, size.x, size.y};
+    DrawRectangle(rect.x, rect.y, rect.width, rect.height, DARKBROWN);
     
+    DrawBitSlider();
+}
+
+void SecFileUI::DrawBitSlider()
+{
+    Rectangle rect{padding + 90, screenSize.y - 70, 150, 25};
+    std::string label = "Bit Slider";
+    std::stringstream value;
+    value << secFile->bitDepth;
+    float bitDepth = secFile->bitDepth;
+    GuiSlider(rect, label.c_str(), value.str().c_str(), &bitDepth, 0.f, 8.f);
+    if (secFile->bitDepth != std::round(bitDepth))
+    {
+        secFile->bitDepth = std::round(bitDepth);
+        UpdatePreview();
+    }
+}
+
+void SecFileUI::UpdatePreview()
+{
+    std::cout << "Update Preview" << std::endl;
+    if (secFile->loadedTexture == nullptr)return;
+    if (previewTexture != nullptr)
+    {
+        UnloadTexture(*previewTexture);
+    }
+
+    Image img = LoadImageFromTexture(*secFile->loadedTexture);
+    previewTexture = new Texture2D(LoadTextureFromImage(img));
+    UnloadImage(img);
+    if (secFile->bitDepth < 1)return;
+    
+    long dataSize = SecFile::GetSizeInBytes(previewTexture, secFile->bitDepth);
+    dataSize -= 100;
+    std::vector<uint8_t> data = Random::GetBytes(dataSize);
+    SecFile::WriteDataToTexture(*previewTexture, data, secFile->bitDepth);
 }

@@ -32,27 +32,6 @@ UIContainer* containerUI;
 SecFile secFile;
 SecFileUI ui(&secFile, {SCREEN_WIDTH, SCREEN_HEIGHT});
 
-void OnTestButtonClick()
-{
-	std::cout << "OnTestButtonClick" << std::endl;
-	Test::RunAllTests();
-}
-
-void SetImagePreviewToDepth(uint8_t depth)
-{
-	
-	long dataSize = SecFile::GetSizeInBytes(originalImage, depth);
-	dataSize -= 100;
-	std::vector<uint8_t> data = Random::GetBytes(dataSize);
-	if (previewImage != nullptr)
-	{
-		UnloadTexture(*previewImage);
-		delete previewImage;
-	}
-	previewImage = new Texture2D(*originalImage);
-	SecFile::WriteDataToTexture(*previewImage, data, depth);
-}
-
 void UpdateSizeText()
 {
 	long size = SecFile::GetSizeInBytes(originalImage, (int)bitSlider->value);
@@ -64,7 +43,7 @@ void OnBitDepthChanged(float bitDepth)
 	std::cout << "OnBitDepthChanged:" << bitDepth << std::endl;
 	if (originalImage == nullptr) return;
 	int bits = std::round(bitDepth);
-	SetImagePreviewToDepth(bits);
+	//SetImagePreviewToDepth(bits);
 	UpdateSizeText();
 }
 
