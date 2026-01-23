@@ -1,15 +1,14 @@
 #define RAYGUI_IMPLEMENTATION
 
 #include <format>
-
 #include "raylib.h"
 #include "raygui.h"
 #include "resource_dir.h"
 #include "Test.h"
+#include "SecFileUI.h"
 #include "UIElements/UIButton.h"
 #include "UIElements/UIContainer.h"
 #include "UIElements/UIDropZone.h"
-#include "UIElements/UIImageDropZone.h"
 #include "UIElements/UISlider.h"
 #include "UIElements/UIText.h"
 
@@ -22,7 +21,6 @@ const char* RESOURCE_DIR = "resources";
 const char* GUI_STYLE_PATH = "styles/jungle/style_jungle.rgs";
 
 UIButton* testButton;
-UIImageDropZone* dropZone;
 UISlider* bitSlider;
 Texture2D* originalImage;
 Texture2D* previewImage;
@@ -32,6 +30,9 @@ UIButton* openButton;
 Container* content;
 UIContainer* containerUI;
 
+SecFile secFile;
+SecFileUI ui(&secFile, {SCREEN_WIDTH, SCREEN_HEIGHT});
+
 void OnTestButtonClick()
 {
 	std::cout << "OnTestButtonClick" << std::endl;
@@ -40,11 +41,6 @@ void OnTestButtonClick()
 
 void SetImagePreviewToDepth(uint8_t depth)
 {
-	if (depth <= 0)
-	{
-		dropZone->SetTexture(originalImage);
-		return;
-	}
 	
 	long dataSize = SecFile::GetSizeInBytes(originalImage, depth);
 	dataSize -= 100;
@@ -56,7 +52,6 @@ void SetImagePreviewToDepth(uint8_t depth)
 	}
 	previewImage = new Texture2D(*originalImage);
 	SecFile::WriteDataToTexture(*previewImage, data, depth);
-	dropZone->SetTexture(previewImage);
 }
 
 void UpdateSizeText()
@@ -116,49 +111,6 @@ void Init()
 	SearchAndSetResourceDir(RESOURCE_DIR);
 	GuiLoadStyle(GUI_STYLE_PATH);
 	SetTargetFPS(FPS);
-
-	testButton = new UIButton();
-	testButton->transform.SetPosition({1170,10});
-	testButton->transform.SetSize({100, 25});
-	testButton->label = "Run All Tests";
-	testButton->onClick.Add(OnTestButtonClick);
-
-	dropZone = new UIImageDropZone();
-	dropZone->transform.SetPivot({0.,0.});
-	dropZone->transform.SetPosition({10,10});
-	dropZone->transform.SetSize({300,200});
-	dropZone->onImageDropped.Add(OnImageDropped);
-
-	bitSlider = new UISlider();
-	bitSlider->transform.SetPosition({100,220});
-	bitSlider->transform.SetSize({200,25});
-	bitSlider->min = 0;
-	bitSlider->max = 8;
-	bitSlider->value=1;
-	bitSlider->intValues=true;
-	bitSlider->label = "Bit Depth";
-	bitSlider->onValueChanged.Add(OnBitDepthChanged);
-
-	saveButton = new UIButton();
-	saveButton->transform.SetPosition({10,255});
-	saveButton->transform.SetSize({100,25});
-	saveButton->label = "Save Image";
-	saveButton->onClick.Add(OnSaveButtonClick);
-
-	sizeText = new UIText();
-	sizeText->transform.SetPosition({10,290});
-	sizeText->transform.SetSize({200,25});
-	sizeText->text = "Container size: ?";
-
-	openButton = new UIButton();
-	openButton->transform.SetPosition({10,325});
-	openButton->transform.SetSize({100,25});
-	openButton->label = "Open";
-	openButton->onClick.Add(OnOpenButtonClick);
-
-	containerUI = new UIContainer();
-	containerUI->transform.SetPosition({410.,10});
-	containerUI->transform.SetSize({600,600});
 }
 
 void Update()
@@ -166,7 +118,7 @@ void Update()
 	BeginDrawing();
 	ClearBackground(BG_COLOR);
 
-	UIElement::DrawAll();
+	ui.Draw();
 		
 	EndDrawing();
 }
@@ -179,8 +131,6 @@ int main ()
 	{
 		Update();
 	}
-
-	delete dropZone;
 	
 	CloseWindow();
 	
