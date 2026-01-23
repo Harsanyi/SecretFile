@@ -248,12 +248,12 @@ Container* BitStream::ReadContainer()
     }
     
     int size = ReadUInt64();
-    Container result;
+    Container* result = new Container();
     for (int f=0;f<size;f++)
     {
-        result.files.push_back(ReadFileData());
+        result->files.push_back(ReadFileData());
     }
-    return new Container(result);
+    return result;
 }
 
 int BitStream::GetTotalSize(int bitDepth) const

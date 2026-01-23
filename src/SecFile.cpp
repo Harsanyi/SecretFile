@@ -1,8 +1,11 @@
 ﻿#include "SecFile.h"
 
+#include <fstream>
 #include <iostream>
-
+#include "filesystem"
 #include "BitStream.h"
+
+namespace fs = std::filesystem;
 
 
 void SecFile::WriteDataToImage(Image& img, const std::vector<uint8_t>& data, uint8_t bitDepth)
@@ -58,4 +61,50 @@ Container* SecFile::GetContentFromImage(Image& img, uint8_t bitDepth)
     std::vector<uint8_t> imgData = ImageToByteVector(img);
     BitStream bs(imgData,bitDepth);
     return bs.ReadContainer();
+}
+
+void SecFile::LoadContainer()
+{
+    if (loadedTexture == nullptr)return;
+    if (container != nullptr)
+    {
+        delete container;
+    }
+    container = GetContentFromTexture(*loadedTexture, bitDepth);
+    if (container == nullptr)
+    {
+        container = new Container();
+    }
+}
+
+void SecFile::AddFileFromPath(std::string path)
+{
+    fs::path file(path);
+    std::string name = file.stem().string();
+
+    std::ifstream input(file, std::ios::binary);
+    if (!input.is_open())
+    {
+        std::cerr << "Failed to open file " << path << std::endl;
+        return;
+    }
+
+    input.seekg(0, std::ios::end);
+    std::streamsize size = input.tellg();
+    input.seekg(0, std::ios::beg);
+
+    std::vector<uint8_t> bytes(size);
+    if (!input.read(reinterpret_cast<char*>(bytes.data()), size))
+    {
+        std::cerr << "Failed to read file " << path << std::endl;
+        return;
+    }
+
+    input.close();
+
+    FileData fileData = FileData();
+    fileData.fileName = name;
+    fileData.data = bytes;
+
+    container->files.push_back(fileData);
 }

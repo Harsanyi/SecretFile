@@ -21,4 +21,6 @@ public:
     void DrawMenu();
     void DrawBitSlider();
     void UpdatePreview();
+    void DrawOpenButton();
+    void DrawContent();
 };

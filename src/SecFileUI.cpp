@@ -2,12 +2,16 @@
 
 #include "SecFileUI.h"
 
+#include <fstream>
 #include <iostream>
 #include <sstream>
 
 #include "Random.h"
 #include "raygui.h"
 #include "SecFile.h"
+#include "filesystem"
+
+namespace fs = std::filesystem;
 
 SecFileUI::SecFileUI(SecFile* secFile, Vector2 screenSize)
 {
@@ -20,6 +24,10 @@ void SecFileUI::Draw()
     DrawImageDropZone();
     DrawTestButton();
     DrawMenu();
+    if (secFile->container != nullptr)
+    {
+        DrawContent();   
+    }
 }
 
 void SecFileUI::DrawImageDropZone()
@@ -92,6 +100,7 @@ void SecFileUI::DrawMenu()
     DrawRectangle(rect.x, rect.y, rect.width, rect.height, DARKBROWN);
     
     DrawBitSlider();
+    DrawOpenButton();
 }
 
 void SecFileUI::DrawBitSlider()
@@ -127,4 +136,37 @@ void SecFileUI::UpdatePreview()
     dataSize -= 100;
     std::vector<uint8_t> data = Random::GetBytes(dataSize);
     SecFile::WriteDataToTexture(*previewTexture, data, secFile->bitDepth);
+}
+
+void SecFileUI::DrawOpenButton()
+{
+    Rectangle rect{padding, screenSize.y - 100, 100, 25};
+    if (GuiButton(rect,"Open") == 1)
+    {
+        std::cout << "Open" << std::endl;
+        secFile->LoadContainer();
+    }
+}
+
+void SecFileUI::DrawContent()
+{
+    Vector2 size {300,screenSize.y - padding*2};
+    Rectangle rect{screenSize.x - padding - size.x, screenSize.y - padding - size.y, size.x, size.y};
+    DrawRectangle(rect.x, rect.y, rect.width, rect.height, DARKBROWN);
+
+    if (secFile->container == nullptr)return;
+
+    std::string path;
+    if (IsFileDroppedInRect(rect, path))
+    {
+       secFile->AddFileFromPath(path);
+    }
+
+    auto files = secFile->container->files;
+    for (int f=0; f<files.size(); f++)
+    {
+        Vector2 size{150,25};
+        Rectangle rect{rect.x + padding, rect.y + padding + f*size.y + (f > 0 ? (f-1)*space : 0), size.x, size.y};
+        GuiLabelButton(rect, files[f].fileName.c_str());
+    }
 }

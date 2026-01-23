@@ -21,5 +21,9 @@ public:
     static Container* GetContentFromImage(Image& img, uint8_t bitDepth);
 
     Texture2D* loadedTexture = nullptr;
-    int bitDepth = 1;
+    uint8_t bitDepth = 1;
+    Container* container = nullptr;
+
+    void LoadContainer();
+    void AddFileFromPath(std::string path);
 };

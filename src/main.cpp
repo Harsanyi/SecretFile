@@ -20,66 +20,22 @@ const char* WINDOW_TITLE = "SecretFile";
 const char* RESOURCE_DIR = "resources";
 const char* GUI_STYLE_PATH = "styles/jungle/style_jungle.rgs";
 
-UISlider* bitSlider;
-Texture2D* originalImage;
-Texture2D* previewImage;
 UIButton* saveButton;
 UIText* sizeText;
 UIButton* openButton;
-Container* content;
-UIContainer* containerUI;
 
 SecFile secFile;
 SecFileUI ui(&secFile, {SCREEN_WIDTH, SCREEN_HEIGHT});
 
-void UpdateSizeText()
-{
-	long size = SecFile::GetSizeInBytes(originalImage, (int)bitSlider->value);
-	sizeText->text = std::format("Container size:{0}", size);
-}
-
-void OnBitDepthChanged(float bitDepth)
-{
-	std::cout << "OnBitDepthChanged:" << bitDepth << std::endl;
-	if (originalImage == nullptr) return;
-	int bits = std::round(bitDepth);
-	//SetImagePreviewToDepth(bits);
-	UpdateSizeText();
-}
-
-void OnImageDropped(Texture2D* img)
-{
-	std::cout << "OnImageDropped" << std::endl;
-	if (originalImage != nullptr)
-	{
-		UnloadTexture(*originalImage);
-		delete originalImage;
-	}
-	originalImage = img;
-
-	OnBitDepthChanged(bitSlider->value);
-}
-
 void OnSaveButtonClick()
 {
-	std::cout << "OnSaveButtonClick" << std::endl;
-	if (previewImage == nullptr) return;
-
-	Image img = LoadImageFromTexture(*previewImage);
-	ExportImage(img, "saveImg.png");
-	UnloadImage(img);
-	std::cout << "Image Saved!" << std::endl;
-}
-
-void OnOpenButtonClick()
-{
-	std::cout << "OnOpenButtonClick" << std::endl;
-	if (originalImage == nullptr) return;
-
-	uint8_t bitDepth = bitSlider->value;
-	if (content != nullptr)delete content;
-	content = SecFile::GetContentFromTexture(*originalImage, bitDepth);
-	if (content == nullptr)content = new Container();
+	//std::cout << "OnSaveButtonClick" << std::endl;
+	//if (previewImage == nullptr) return;
+//
+	//Image img = LoadImageFromTexture(*previewImage);
+	//ExportImage(img, "saveImg.png");
+	//UnloadImage(img);
+	//std::cout << "Image Saved!" << std::endl;
 }
 
 void Init()
