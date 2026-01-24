@@ -4,7 +4,6 @@
 #include "raylib.h"
 #include "raygui.h"
 #include "resource_dir.h"
-#include "Test.h"
 #include "SecFileUI.h"
 
 const Color BG_COLOR = {44,44,44,255};
@@ -15,8 +14,8 @@ const char* WINDOW_TITLE = "SecretFile";
 const char* RESOURCE_DIR = "resources";
 const char* GUI_STYLE_PATH = "styles/jungle/style_jungle.rgs";
 
-SecFile secFile;
-SecFileUI ui(&secFile, {SCREEN_WIDTH, SCREEN_HEIGHT});
+static SecFile secFile;
+static SecFileUI ui(&secFile, {SCREEN_WIDTH, SCREEN_HEIGHT});
 
 void Init()
 {

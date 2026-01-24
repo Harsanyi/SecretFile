@@ -22,7 +22,6 @@ SecFileUI::SecFileUI(SecFile* secFile, Vector2 screenSize)
 void SecFileUI::Draw()
 {
     DrawImageDropZone();
-    DrawTestButton();
     DrawMenu();
     if (secFile->container != nullptr)
     {
@@ -84,17 +83,6 @@ bool SecFileUI::IsFileDroppedInRect(const Rectangle& rect, std::string& path)
     return false;
 }
 
-void SecFileUI::DrawTestButton()
-{
-    Vector2 size {100,25};
-    Rectangle rect {screenSize.x - size.x - padding, padding, size.x, size.y};
-    
-    if (GuiButton(rect, "Test") == 1)
-    {
-        std::cout << "Test" << std::endl;
-    }
-}
-
 void SecFileUI::DrawMenu()
 {
     Vector2 size{160, 100};
@@ -110,13 +98,16 @@ void SecFileUI::DrawBitSlider()
 {
     Rectangle rect{padding + 90, screenSize.y - 40, 150, 25};
     std::string label = "Bit Slider";
+
     std::stringstream value;
-    value << secFile->bitDepth;
-    float bitDepth = secFile->bitDepth;
-    GuiSlider(rect, label.c_str(), value.str().c_str(), &bitDepth, 0.f, 8.f);
-    if (secFile->bitDepth != std::round(bitDepth))
+    int bitDepth = (int)secFile->bitDepth;
+    value << bitDepth;
+    float sliderVal = bitDepth;
+    GuiSlider(rect, label.c_str(), value.str().c_str(), &sliderVal, 0.f, 8.f);
+    if (bitDepth != std::round(sliderVal))
     {
-        secFile->bitDepth = std::round(bitDepth);
+        bitDepth = std::round(sliderVal);
+        secFile->bitDepth = bitDepth;
         UpdatePreview();
     }
 }
@@ -124,21 +115,25 @@ void SecFileUI::DrawBitSlider()
 void SecFileUI::UpdatePreview()
 {
     std::cout << "Update Preview" << std::endl;
+    
     if (secFile->loadedTexture == nullptr)return;
-    if (previewTexture != nullptr)
-    {
-        UnloadTexture(*previewTexture);
-    }
-
+    if (previewTexture != nullptr)UnloadTexture(*previewTexture);
+    
     Image img = LoadImageFromTexture(*secFile->loadedTexture);
+    ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+
+    if (secFile->bitDepth > 0)
+    {
+        auto colors = SecFile::ImageToByteVector(img);
+        BitStream bs(colors, secFile->bitDepth);
+        long dataSize = SecFile::GetSizeInBytes(img.width, img.height, secFile->bitDepth);
+        std::vector<uint8_t> data = Random::GetBytes(dataSize);
+        bs.WriteBytes(data);
+        std::memcpy(img.data, bs.data.data(), dataSize);
+    }
+    
     previewTexture = new Texture2D(LoadTextureFromImage(img));
     UnloadImage(img);
-    if (secFile->bitDepth < 1)return;
-    
-    long dataSize = SecFile::GetSizeInBytes(previewTexture->width, previewTexture->height, secFile->bitDepth);
-    dataSize -= 100;
-    std::vector<uint8_t> data = Random::GetBytes(dataSize);
-    SecFile::WriteDataToTexture(*previewTexture, data, secFile->bitDepth);
 }
 
 void SecFileUI::DrawOpenButton()

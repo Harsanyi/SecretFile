@@ -6,8 +6,6 @@
 
 class SecFile
 {
-private:
-    
 public:
     const int SCREEN_WIDTH = 1280;
     const int SCREEN_HEIGHT = 720;
@@ -17,7 +15,7 @@ public:
     static std::vector<uint8_t> ImageToByteVector(const Image& img);
     static long GetSizeInBytes(int width, int height, uint8_t bitDepth);
     static void WriteDataToTexture(Texture2D& texture, const std::vector<uint8_t>& data, uint8_t bitDepth);
-    static Container* ReadContainerFromTexture(Texture2D& texture, uint8_t& bitDepth);
+    static Container* ReadContainerFromTexture(Texture2D& texture, uint8_t bitDepth);
     static Container* ReadContainerFromImage(Image& img, uint8_t bitDepth);
     static void WriteContainerToImage(Container& container, Image& img, uint8_t bitDepth);
 

@@ -17,7 +17,6 @@ public:
     void DrawImageDropZone();
     Texture2D* GetDropTexture();
     bool IsFileDroppedInRect(const Rectangle& rect, std::string& path);
-    void DrawTestButton();
     void DrawMenu();
     void DrawBitSlider();
     void UpdatePreview();

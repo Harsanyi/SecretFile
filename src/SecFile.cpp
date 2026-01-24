@@ -48,7 +48,7 @@ void SecFile::WriteDataToTexture(Texture2D& texture, const std::vector<uint8_t>&
     UnloadImage(img);
 }
 
-Container* SecFile::ReadContainerFromTexture(Texture2D& texture, uint8_t& bitDepth)
+Container* SecFile::ReadContainerFromTexture(Texture2D& texture, uint8_t bitDepth)
 {
     Image img = LoadImageFromTexture(texture);
     ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
@@ -141,21 +141,7 @@ void SecFile::SaveImage()
     ss << path.stem().string() << "_mod.png";
     
     Image img = LoadImageFromTexture(*loadedTexture);
-    ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
-
-    //-----------FAKE
-    auto colors = ImageToByteVector(img);
-    bitDepth = 1;
-    BitStream bs(colors, bitDepth);
-    long size = GetSizeInBytes(img.width, img.height, bitDepth) - sizeof(uint64_t);
-    auto bytes = Random::GetBytes(size);
-    bs.WriteBytes(bytes);
-    
-    std::memcpy(img.data, bs.data.data(), colors.size());
-    //------------FAKE END
-    //WriteContainerToImage(*container, img, bitDepth);
-    //std::vector<uint8_t> data = Random::GetBytes(1000000);
-    //WriteDataToImage(img, data, 1);
+    WriteContainerToImage(*container, img, bitDepth);
     ExportImage(img, ss.str().c_str());
     UnloadImage(img);
 }
