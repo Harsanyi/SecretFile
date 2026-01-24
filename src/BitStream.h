@@ -47,7 +47,7 @@ public:
     void WriteContainer(const Container& container);
     Container* ReadContainer();
 
-    bool HaveKey();
+    bool IsHaveKey();
     void WriteKey();
 
     bool AtEnd()const;

@@ -45,12 +45,17 @@ void BitStream::WriteBytes(const std::vector<uint8_t>& bytes)
 
 std::vector<uint8_t> BitStream::ReadBytes(int count)
 {
-    std::cout << "Implement" << std::endl;
-    return std::vector<uint8_t>(count);
+    std::vector<uint8_t> result(count);
+    for (int b=0; b<count; b++)
+    {
+        result[b] = ReadBits(8);
+    }
+    return result;
 }
 
 void BitStream::WriteUInt64(const uint64_t value)
 {
+    std::cout << "Write uint64: " << value << std::endl;
     std::vector<uint8_t> bytes(sizeof(uint64_t));
     std::memcpy(bytes.data(), &value, sizeof(uint64_t));
     WriteBytes(bytes);
@@ -58,9 +63,10 @@ void BitStream::WriteUInt64(const uint64_t value)
 
 uint64_t BitStream::ReadUInt64()
 {
-    auto readed = ReadBytes(sizeof(uint64_t)*8);
+    auto readed = ReadBytes(sizeof(uint64_t));
     uint64_t result;
     std::memcpy(&result, readed.data(), sizeof(uint64_t));
+    std::cout << "Read uint64: " << result << std::endl;
     return result;
 }
 
@@ -73,21 +79,30 @@ void BitStream::WriteData(const std::vector<uint8_t>& data)
 std::vector<uint8_t> BitStream::ReadData()
 {
     long size = ReadUInt64();
-    return ReadBytes(size*8);
+    return ReadBytes(size);
 }
 
 void BitStream::WriteString(const std::string& str)
 {
+    uint64_t startPos = bitPosition;
+    std::cout << "Write string: " << str << std::endl;
     WriteUInt64(str.size());
     std::vector<uint8_t> bytes(str.begin(),str.end());
     WriteBytes(bytes);
+
+    bitPosition = startPos;
+    std::string read = ReadString();
+    std::cout << "read back:" << read << std::endl;
 }
 
 std::string BitStream::ReadString()
 {
-    long size = ReadUInt64();
-    std::vector<uint8_t> bytes = ReadBytes(size*8);
-    return std::string(bytes.begin(),bytes.end());
+    uint64_t size = ReadUInt64();
+    std::vector<uint8_t> bytes = ReadBytes(size);
+    std::string result(bytes.begin(), bytes.end());
+    //std::string result = std::string(bytes.begin(),bytes.end());
+    std::cout << "Read string: " << result.c_str() << std::endl;
+    return result;
 }
 
 void BitStream::WriteFileData(const FileData& data)
@@ -104,7 +119,8 @@ FileData BitStream::ReadFileData()
 void BitStream::WriteContainer(const Container& container)
 {
     WriteKey();
-    WriteUInt64(container.files.size());
+    WriteUInt64((uint64_t)container.files.size());
+    std::cout << "Write files:" << container.files.size() << std::endl;
     for (int f=0;f<container.files.size();f++)
     {
         WriteFileData(container.files[f]);
@@ -113,13 +129,17 @@ void BitStream::WriteContainer(const Container& container)
 
 Container* BitStream::ReadContainer()
 {
-    if (!HaveKey())
+    if (!IsHaveKey())
     {
+        std::cout << "Key not found, open new!" << std::endl;
         return nullptr;
     }
+
+    std::cout << "Key Found!" << std::endl;
     
     int size = ReadUInt64();
     Container* result = new Container();
+    std::cout << "Found files: " << size << std::endl; 
     for (int f=0;f<size;f++)
     {
         result->files.push_back(ReadFileData());
@@ -127,18 +147,22 @@ Container* BitStream::ReadContainer()
     return result;
 }
 
-bool BitStream::HaveKey()
+bool BitStream::IsHaveKey()
 {
     auto bytes = ReadBytes(KEY.length());
     std::string readedKey = std::string(bytes.begin(),bytes.end());
+    std::cout << "Readed key: " << readedKey << std::endl;
+    
     return readedKey == KEY;
 }
 
 void BitStream::WriteKey()
 {
-    std::vector<uint8_t> bytes(KEY.length()*8);
-    std::memcpy(bytes.data(), KEY.data(), KEY.length()*8);
+    std::vector<uint8_t> bytes(KEY.length());
+    std::memcpy(bytes.data(), KEY.data(), KEY.length());
     WriteBytes(bytes);
+
+    std::cout << "Key written!" << std::endl;
 }
 
 bool BitStream::AtEnd() const
@@ -171,32 +195,29 @@ void BitStream::WriteBits(uint8_t& byte, const uint8_t start, const uint8_t end,
 
 uint8_t BitStream::ReadBits(const uint8_t count)
 {
-    if (count > 8)throw std::exception("Cannot read more than 8 bits at a time!");
+    if (count > 8)throw std::exception("You cannot read more than 8 bit at a time!");
     
+    uint8_t result = 0;
     int readed = 0;
-    uint8_t result = 0b0;
     while (readed < count)
     {
         int byteIndex, bitIndex;
         Pos2Indexes(bitPosition, byteIndex, bitIndex);
-        bitIndex = std::max(bitIndex, 8-bitDepth);
 
-        while (bitIndex >= 8)
+        while (bitIndex >= bitDepth)
         {
             byteIndex++;
-            bitIndex -= 8;
+            bitIndex -= bitDepth;
         }
 
-        if (byteIndex >= data.size())throw std::exception(std::format("Out of byte index! {}", byteIndex).c_str());
+        int readable = std::min(bitDepth-bitIndex, count-readed);
+        uint8_t value = ReadBits(data[byteIndex], bitIndex, bitIndex + readable-1);
+        value >>= bitIndex;
+        value <<= readed;
+        result |= value;
+        readed += readable;
+        bitIndex += readable;
 
-        
-        int canRead = std::min((int)count, 8-bitIndex);
-        uint8_t readVal = ReadBits(byteIndex, bitIndex, bitIndex+canRead);
-        readVal >>= bitIndex;
-        result |= (readVal << readed);
-        readed += canRead;
-
-        bitIndex += canRead;
         bitPosition = Indexes2Pos(byteIndex, bitIndex);
     }
 

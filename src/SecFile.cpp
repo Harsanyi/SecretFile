@@ -24,7 +24,7 @@ std::vector<uint8_t> SecFile::ReadDataFromImage(Image& img, uint8_t bitDepth)
     auto colors = ImageToByteVector(img);
     BitStream bs(colors, bitDepth);
     uint64_t size = bs.ReadUInt64();
-    return  bs.ReadBytes(size*8);
+    return  bs.ReadBytes(size);
 }
 
 std::vector<uint8_t> SecFile::ImageToByteVector(const Image& img)
@@ -78,7 +78,7 @@ void SecFile::WriteContainerToImage(Container& container, Image& img, uint8_t bi
     std::vector<uint8_t> imgData = ImageToByteVector(img);
     BitStream bs(imgData,bitDepth);
     bs.WriteContainer(container);
-    std::memcpy(img.data, imgData.data(), imgData.size());
+    std::memcpy(img.data, bs.data.data(), imgData.size());
 }
 
 void SecFile::LoadContainer()
