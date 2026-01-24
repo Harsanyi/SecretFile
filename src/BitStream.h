@@ -9,14 +9,14 @@
 class BitStream
 {
 private:
-    static void Pos2Indexes(const uint64_t pos, int& byteIndex, int& bitIndex);
-    static uint64_t Indexes2Pos(const int byteIndex, const int bitIndex);
+    void Pos2Indexes(const uint64_t pos, int& byteIndex, int& bitIndex);
+    uint64_t Indexes2Pos(const int byteIndex, const int bitIndex);
     const std::string KEY = "CONTAINER";
     
 public:
     std::vector<uint8_t>& data;
-    uint64_t position = 0;
     uint8_t bitDepth = 4;
+    uint64_t bitPosition = 0;
     
     BitStream(std::vector<uint8_t>& data, uint8_t bitDepth);
 

@@ -22,5 +22,6 @@ public:
     void DrawBitSlider();
     void UpdatePreview();
     void DrawOpenButton();
+    void DrawSaveButton();
     void DrawContent();
 };

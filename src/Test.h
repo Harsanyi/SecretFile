@@ -207,7 +207,7 @@ public:
             
         //read data
         int bitCount = dataLength * 8;
-        targetStream.position = 0;
+        targetStream.bitPosition = 0;
         auto readedA = targetStream.ReadBytes(bitCount);
         auto readedB = targetStream.ReadBytes(bitCount);
             

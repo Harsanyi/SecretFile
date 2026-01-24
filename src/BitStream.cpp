@@ -8,7 +8,7 @@
 
 BitStream::BitStream(std::vector<uint8_t>& data, uint8_t bitDepth) : data(data)
 {
-    position = 0;
+    this->bitPosition = 0;
     this->bitDepth = bitDepth;
 }
 
@@ -90,7 +90,7 @@ std::vector<uint8_t> BitStream::ReadBytes(int byteIndex, int bitIndex, uint64_t 
         readed += canRead;
     }
 
-    position = Indexes2Pos(byteIndex, bitIndex);
+    bitPosition = Indexes2Pos(byteIndex, bitIndex);
     
     return result;
 }
@@ -98,7 +98,7 @@ std::vector<uint8_t> BitStream::ReadBytes(int byteIndex, int bitIndex, uint64_t 
 std::vector<uint8_t> BitStream::ReadBytes(uint64_t bitCount)
 {
     int byteIndex, bitIndex;
-    Pos2Indexes(position, byteIndex, bitIndex);
+    Pos2Indexes(bitPosition, byteIndex, bitIndex);
     return ReadBytes(byteIndex, bitIndex, bitCount);
 }
 
@@ -123,8 +123,8 @@ void BitStream::WriteBytes(int byteIndex, int bitIndex, const std::vector<uint8_
 {
     bitIndex = std::max(bitIndex, 8-bitDepth);
 
-    int totalSize = data.size()*8;
-    int occupied = byteIndex*8;
+    int totalSize = data.size()*bitDepth; // in bits
+    int occupied = (byteIndex*bitDepth) + (bitIndex - (8-bitDepth)); // in bits
     int avaiableSize = totalSize-occupied;
     int requireSize = bytes.size() * 8;
     if (avaiableSize < requireSize)
@@ -132,7 +132,7 @@ void BitStream::WriteBytes(int byteIndex, int bitIndex, const std::vector<uint8_
 
     int srcByteIndex = 0;
     int srcBitIndex = 0;
-    int writed = 0;
+    uint64_t writed = 0;
 
     auto srcData = bytes;
     BitStream bs(srcData, bitDepth);
@@ -161,19 +161,19 @@ void BitStream::WriteBytes(int byteIndex, int bitIndex, const std::vector<uint8_
         }
 
         //write data
-        WriteBits(byteIndex, bitIndex, bitIndex+(canWrite-1), val);
+        WriteBits(byteIndex, 7-(bitIndex+(canWrite-1)), 7-bitIndex, val);
 
         //apply changes
         writed += canWrite;
     }
 
-    position = Indexes2Pos(byteIndex, bitIndex);
+    bitPosition = Indexes2Pos(byteIndex, bitIndex);
 }
 
 void BitStream::WriteBytes(const std::vector<uint8_t>& bytes)
 {
     int byteIndex, bitIndex;
-    Pos2Indexes(position, byteIndex, bitIndex);
+    Pos2Indexes(bitPosition, byteIndex, bitIndex);
     WriteBytes(byteIndex, bitIndex, bytes);
 }
 

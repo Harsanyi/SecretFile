@@ -39,6 +39,8 @@ void SecFileUI::DrawImageDropZone()
         std::cout << "Load file " << filePath << std::endl;
         if (secFile->loadedTexture != nullptr)UnloadTexture(*secFile->loadedTexture);
         secFile->loadedTexture = new Texture2D(LoadTexture(filePath.c_str()));
+        fs::path path(filePath);
+        secFile->loadedTextureName = path.filename().string(); 
         UpdatePreview();
     }
 
@@ -101,11 +103,12 @@ void SecFileUI::DrawMenu()
     
     DrawBitSlider();
     DrawOpenButton();
+    DrawSaveButton();
 }
 
 void SecFileUI::DrawBitSlider()
 {
-    Rectangle rect{padding + 90, screenSize.y - 70, 150, 25};
+    Rectangle rect{padding + 90, screenSize.y - 40, 150, 25};
     std::string label = "Bit Slider";
     std::stringstream value;
     value << secFile->bitDepth;
@@ -132,7 +135,7 @@ void SecFileUI::UpdatePreview()
     UnloadImage(img);
     if (secFile->bitDepth < 1)return;
     
-    long dataSize = SecFile::GetSizeInBytes(previewTexture, secFile->bitDepth);
+    long dataSize = SecFile::GetSizeInBytes(previewTexture->width, previewTexture->height, secFile->bitDepth);
     dataSize -= 100;
     std::vector<uint8_t> data = Random::GetBytes(dataSize);
     SecFile::WriteDataToTexture(*previewTexture, data, secFile->bitDepth);
@@ -145,6 +148,16 @@ void SecFileUI::DrawOpenButton()
     {
         std::cout << "Open" << std::endl;
         secFile->LoadContainer();
+    }
+}
+
+void SecFileUI::DrawSaveButton()
+{
+    Rectangle rect{padding, screenSize.y - 70, 100, 25};
+    if (GuiButton(rect,"Save") == 1)
+    {
+        std::cout << "Save" << std::endl;
+        secFile->SaveImage();
     }
 }
 

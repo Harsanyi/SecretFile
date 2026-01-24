@@ -4,6 +4,7 @@
 #include <iostream>
 #include "filesystem"
 #include "BitStream.h"
+#include "Random.h"
 
 namespace fs = std::filesystem;
 
@@ -15,7 +16,7 @@ void SecFile::WriteDataToImage(Image& img, const std::vector<uint8_t>& data, uin
     uint64_t size = data.size();
     bs.WriteUInt64(size);
     bs.WriteBytes(data);
-    std::memcpy(img.data, bs.data.data(), colors.size());
+    std::memcpy(img.data, bs.data.data(), bs.data.size());
 }
 
 std::vector<uint8_t> SecFile::ReadDataFromImage(Image& img, uint8_t bitDepth)
@@ -33,9 +34,9 @@ std::vector<uint8_t> SecFile::ImageToByteVector(const Image& img)
     return  std::vector<uint8_t>(colors, colors + byteCount);
 }
 
-auto SecFile::GetSizeInBytes(Texture2D* texture, int bitDepth) -> long
+long SecFile::GetSizeInBytes(int width, int height, uint8_t bitDepth)
 {
-    return texture->width * texture->height * 4 * bitDepth / 8;
+    return width * height * 4 * bitDepth / 8;
 }
 
 void SecFile::WriteDataToTexture(Texture2D& texture, const std::vector<uint8_t>& data, uint8_t bitDepth)
@@ -47,20 +48,37 @@ void SecFile::WriteDataToTexture(Texture2D& texture, const std::vector<uint8_t>&
     UnloadImage(img);
 }
 
-Container* SecFile::GetContentFromTexture(Texture2D& texture, uint8_t& bitDepth)
+Container* SecFile::ReadContainerFromTexture(Texture2D& texture, uint8_t& bitDepth)
 {
     Image img = LoadImageFromTexture(texture);
     ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
-    Container* cont = GetContentFromImage(img, bitDepth);
+    Container* cont = ReadContainerFromImage(img, bitDepth);
     UnloadImage(img);
     return cont;
 }
 
-Container* SecFile::GetContentFromImage(Image& img, uint8_t bitDepth)
+Container* SecFile::ReadContainerFromImage(Image& img, uint8_t bitDepth)
 {
     std::vector<uint8_t> imgData = ImageToByteVector(img);
     BitStream bs(imgData,bitDepth);
     return bs.ReadContainer();
+}
+
+void SecFile::WriteContainerToImage(Container& container, Image& img, uint8_t bitDepth)
+{
+    ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    long imgSize = GetSizeInBytes(img.width, img.height, bitDepth);
+    long contSize = container.GetSize();
+    if (contSize >= imgSize)
+    {
+        std::cerr << "Container size:" << contSize << " is too big for img capacity: " << imgSize << std::endl; 
+        return;
+    }
+    
+    std::vector<uint8_t> imgData = ImageToByteVector(img);
+    BitStream bs(imgData,bitDepth);
+    bs.WriteContainer(container);
+    std::memcpy(img.data, imgData.data(), imgData.size());
 }
 
 void SecFile::LoadContainer()
@@ -70,7 +88,7 @@ void SecFile::LoadContainer()
     {
         delete container;
     }
-    container = GetContentFromTexture(*loadedTexture, bitDepth);
+    container = ReadContainerFromTexture(*loadedTexture, bitDepth);
     if (container == nullptr)
     {
         container = new Container();
@@ -82,7 +100,7 @@ void SecFile::AddFileFromPath(std::string path)
     std::cout << "Add file from path: " << path << std::endl;
     
     fs::path file(path);
-    std::string name = file.stem().string();
+    std::string name = file.filename().string();
 
     std::ifstream input(file, std::ios::binary);
     if (!input.is_open())
@@ -111,6 +129,35 @@ void SecFile::AddFileFromPath(std::string path)
     container->files.push_back(fileData);
     std::cout << "File added:"<< fileData.fileName << std::endl;
     std::cout << "Files:"<< container->files.size() << std::endl;
+}
+
+void SecFile::SaveImage()
+{
+    std::cout << "Save image" << std::endl;
+    if (loadedTexture == nullptr)return;
+
+    fs::path path(loadedTextureName);
+    std::stringstream ss;
+    ss << path.stem().string() << "_mod.png";
+    
+    Image img = LoadImageFromTexture(*loadedTexture);
+    ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+
+    //-----------FAKE
+    auto colors = ImageToByteVector(img);
+    bitDepth = 1;
+    BitStream bs(colors, bitDepth);
+    long size = GetSizeInBytes(img.width, img.height, bitDepth) - sizeof(uint64_t);
+    auto bytes = Random::GetBytes(size);
+    bs.WriteBytes(bytes);
+    
+    std::memcpy(img.data, bs.data.data(), colors.size());
+    //------------FAKE END
+    //WriteContainerToImage(*container, img, bitDepth);
+    //std::vector<uint8_t> data = Random::GetBytes(1000000);
+    //WriteDataToImage(img, data, 1);
+    ExportImage(img, ss.str().c_str());
+    UnloadImage(img);
 }
 
 void SecFile::RemoveFileAt(const int index)
