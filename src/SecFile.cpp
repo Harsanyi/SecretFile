@@ -79,6 +79,8 @@ void SecFile::LoadContainer()
 
 void SecFile::AddFileFromPath(std::string path)
 {
+    std::cout << "Add file from path: " << path << std::endl;
+    
     fs::path file(path);
     std::string name = file.stem().string();
 
@@ -107,4 +109,24 @@ void SecFile::AddFileFromPath(std::string path)
     fileData.data = bytes;
 
     container->files.push_back(fileData);
+    std::cout << "File added:"<< fileData.fileName << std::endl;
+    std::cout << "Files:"<< container->files.size() << std::endl;
+}
+
+void SecFile::RemoveFileAt(const int index)
+{
+    container->files.erase(container->files.begin() + index);
+}
+
+void SecFile::ExportFileAt(const int index)
+{
+    if (index >= container->files.size())
+    {
+        std::cerr << "File index out of range" << std::endl;
+        return;
+    }
+
+    FileData file = container->files[index];
+    SaveFileData(file.fileName.c_str(), file.data.data(), file.data.size());
+    std::cout << "File saved:"<< file.fileName << std::endl;
 }

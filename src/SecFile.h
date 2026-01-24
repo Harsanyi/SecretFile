@@ -26,4 +26,6 @@ public:
 
     void LoadContainer();
     void AddFileFromPath(std::string path);
+    void RemoveFileAt(const int index);
+    void ExportFileAt(const int index);
 };

@@ -231,7 +231,7 @@ FileData BitStream::ReadFileData()
 
 void BitStream::WriteContainer(const Container& container)
 {
-    WriteString("Container");
+    WriteKey();
     WriteUInt64(container.files.size());
     for (int f=0;f<container.files.size();f++)
     {
@@ -241,8 +241,7 @@ void BitStream::WriteContainer(const Container& container)
 
 Container* BitStream::ReadContainer()
 {
-    std::string key = ReadString();
-    if (key != "Container")
+    if (!HaveKey())
     {
         return nullptr;
     }
@@ -254,6 +253,20 @@ Container* BitStream::ReadContainer()
         result->files.push_back(ReadFileData());
     }
     return result;
+}
+
+bool BitStream::HaveKey()
+{
+    auto bytes = ReadBytes(0,0, KEY.length()*8);
+    std::string readedKey = std::string(bytes.begin(),bytes.end());
+    return readedKey == KEY;
+}
+
+void BitStream::WriteKey()
+{
+    std::vector<uint8_t> bytes(KEY.length()*8);
+    std::memcpy(bytes.data(), KEY.data(), KEY.length()*8);
+    WriteBytes(bytes);
 }
 
 int BitStream::GetTotalSize(int bitDepth) const

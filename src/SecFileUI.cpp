@@ -32,7 +32,7 @@ void SecFileUI::Draw()
 
 void SecFileUI::DrawImageDropZone()
 {
-    Rectangle rect{0.f,0.f, screenSize.x, screenSize.y};
+    Rectangle rect{0.f,0.f, screenSize.x-350, screenSize.y};
     std::string filePath;
     if (IsFileDroppedInRect(rect, filePath))
     {
@@ -165,8 +165,24 @@ void SecFileUI::DrawContent()
     auto files = secFile->container->files;
     for (int f=0; f<files.size(); f++)
     {
+        //text
         Vector2 size{150,25};
-        Rectangle rect{rect.x + padding, rect.y + padding + f*size.y + (f > 0 ? (f-1)*space : 0), size.x, size.y};
-        GuiLabelButton(rect, files[f].fileName.c_str());
+        Rectangle fRect{rect.x + padding, rect.y + padding + f*size.y + (f > 0 ? (f-1)*space : 0), size.x, size.y};
+        DrawText(files[f].fileName.c_str(), fRect.x, fRect.y, 14, WHITE);
+
+        //del
+        Rectangle delRect{fRect.x+150, fRect.y, 25, 25};
+        if (GuiButton(delRect, "X")==1)
+        {
+            secFile->RemoveFileAt(f);
+            return;
+        }
+
+        //Save
+        Rectangle saveRect{delRect.x + delRect.width + space, delRect.y, 25, 25};
+        if (GuiButton(saveRect, "S") == 1)
+        {
+            secFile->ExportFileAt(f);
+        }
     }
 }

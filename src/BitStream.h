@@ -11,6 +11,7 @@ class BitStream
 private:
     static void Pos2Indexes(const uint64_t pos, int& byteIndex, int& bitIndex);
     static uint64_t Indexes2Pos(const int byteIndex, const int bitIndex);
+    const std::string KEY = "CONTAINER";
     
 public:
     std::vector<uint8_t>& data;
@@ -48,4 +49,7 @@ public:
 
     void WriteContainer(const Container& container);
     Container* ReadContainer();
+
+    bool HaveKey();
+    void WriteKey();
 };
