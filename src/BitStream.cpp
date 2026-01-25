@@ -113,7 +113,10 @@ void BitStream::WriteFileData(const FileData& data)
 
 FileData BitStream::ReadFileData()
 {
-    return FileData(ReadString(),ReadData());
+    std::string fileName = ReadString();
+    std::vector<uint8_t> data = ReadData();
+    FileData file(fileName, data); 
+    return file;
 }
 
 void BitStream::WriteContainer(const Container& container)
@@ -129,20 +132,15 @@ void BitStream::WriteContainer(const Container& container)
 
 Container* BitStream::ReadContainer()
 {
-    if (!IsHaveKey())
-    {
-        std::cout << "Key not found, open new!" << std::endl;
-        return nullptr;
-    }
-
-    std::cout << "Key Found!" << std::endl;
+    if (!IsHaveKey())return nullptr;
     
     int size = ReadUInt64();
     Container* result = new Container();
     std::cout << "Found files: " << size << std::endl; 
     for (int f=0;f<size;f++)
     {
-        result->files.push_back(ReadFileData());
+        FileData data = ReadFileData();
+        result->files.push_back(std::move(data));
     }
     return result;
 }

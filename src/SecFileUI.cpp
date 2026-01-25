@@ -120,8 +120,6 @@ void SecFileUI::UpdatePreview()
     if (previewTexture != nullptr)UnloadTexture(*previewTexture);
     
     Image img = LoadImageFromTexture(*secFile->loadedTexture);
-    ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
-
     if (secFile->bitDepth > 0)
     {
         auto colors = SecFile::ImageToByteVector(img);

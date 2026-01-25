@@ -12,7 +12,7 @@ public:
     
     static void WriteDataToImage(Image& img, const std::vector<uint8_t>& data, uint8_t bitDepth);
     static std::vector<uint8_t> ReadDataFromImage(Image& img, uint8_t bitDepth);
-    static std::vector<uint8_t> ImageToByteVector(const Image& img);
+    static std::vector<uint8_t> ImageToByteVector(Image& img);
     static long GetSizeInBytes(int width, int height, uint8_t bitDepth);
     static void WriteDataToTexture(Texture2D& texture, const std::vector<uint8_t>& data, uint8_t bitDepth);
     static Container* ReadContainerFromTexture(Texture2D& texture, uint8_t bitDepth);
