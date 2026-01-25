@@ -3,12 +3,13 @@
 
 class SecFileUI
 {
+    Font* font;
     SecFile* secFile;
     Vector2 screenSize;
     Texture2D* dropTexture;
     float padding = 10;
     float space = 5;
-    Texture2D* previewTexture;
+    Texture2D* previewTexture = nullptr;
     
 public:
     SecFileUI(SecFile* secFile,Vector2 screenSize);
@@ -23,4 +24,5 @@ public:
     void DrawOpenButton();
     void DrawSaveButton();
     void DrawContent();
+    void SetFont(Font* font);
 };

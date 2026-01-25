@@ -1,5 +1,4 @@
 ﻿#pragma once
-
 #include "SecFileUI.h"
 
 #include <fstream>
@@ -36,9 +35,13 @@ void SecFileUI::DrawImageDropZone()
     if (IsFileDroppedInRect(rect, filePath))
     {
         std::cout << "Load file " << filePath << std::endl;
+
+        fs::path path(filePath);
+        std::string ext = path.extension().string();
+        if (ext != ".jpg" && ext != ".jpeg" && ext != ".png")return;
+        
         if (secFile->loadedTexture != nullptr)UnloadTexture(*secFile->loadedTexture);
         secFile->loadedTexture = new Texture2D(LoadTexture(filePath.c_str()));
-        fs::path path(filePath);
         secFile->loadedTextureName = path.filename().string(); 
         UpdatePreview();
     }
@@ -50,9 +53,11 @@ void SecFileUI::DrawImageDropZone()
         DrawTexturePro(tex, source, rect, {0.,0.}, 0., WHITE);
     }else
     {
-        Texture2D tex = *GetDropTexture();
         Vector2 center{screenSize.x/2.f, screenSize.y/2.f};
         float extend = 50;
+        DrawTextEx(*font,"Drop file here! (.jpg, .png)",{center.x-150, center.y-100},32, 1, WHITE);
+        
+        Texture2D tex = *GetDropTexture();
         Rectangle dest{center.x - extend, center.y - extend, extend*2, extend*2};
         DrawTexturePro(tex, {0.f,0.f, (float)tex.width, (float)tex.height}, dest, {0.f,0.f}, 0.f, WHITE);
     }
@@ -191,4 +196,9 @@ void SecFileUI::DrawContent()
             secFile->ExportFileAt(f);
         }
     }
+}
+
+void SecFileUI::SetFont(Font* font)
+{
+    this->font = font;
 }

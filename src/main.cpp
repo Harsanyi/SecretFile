@@ -16,6 +16,7 @@ const char* GUI_STYLE_PATH = "styles/jungle/style_jungle.rgs";
 
 static SecFile secFile;
 static SecFileUI ui(&secFile, {SCREEN_WIDTH, SCREEN_HEIGHT});
+static Font font;
 
 void Init()
 {
@@ -24,6 +25,9 @@ void Init()
 	SearchAndSetResourceDir(RESOURCE_DIR);
 	GuiLoadStyle(GUI_STYLE_PATH);
 	SetTargetFPS(FPS);
+	font = LoadFont("Roboto.ttf");
+	GuiSetFont(font);
+	ui.SetFont(&font);
 }
 
 void Update()
