@@ -140,7 +140,6 @@ void SecFile::SaveImage()
     fs::path path(loadedTextureName);
     std::stringstream ss;
     ss << path.stem().string() << "_mod.png";
-    
     Image img = LoadImageFromTexture(*loadedTexture);
     WriteContainerToImage(*container, img, bitDepth);
     ExportImage(img, ss.str().c_str());

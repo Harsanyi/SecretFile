@@ -37,7 +37,7 @@ float Random::GetFloat()
     return static_cast<float>(GetUint()) / static_cast<float>(UINT32_MAX);
 }
 
-std::vector<uint8_t> Random::GetBytes(const int amount)
+std::vector<uint8_t> Random::GetBytes(const long amount)
 {
     std::vector<uint8_t> res(amount);
     for (int i = 0; i < amount; i++)

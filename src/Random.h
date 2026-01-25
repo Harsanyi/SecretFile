@@ -13,7 +13,7 @@ public:
     static uint8_t GetByte();
     static float GetFloat();
     
-    static std::vector<uint8_t> GetBytes(const int amount);
+    static std::vector<uint8_t> GetBytes(const long amount);
     
 private:
     static void Randomize();

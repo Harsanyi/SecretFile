@@ -68,7 +68,12 @@ void SecFileUI::DrawImageDropZone()
         
         if (secFile->loadedTexture != nullptr)UnloadTexture(*secFile->loadedTexture);
         secFile->loadedTexture = new Texture2D(LoadTexture(filePath.c_str()));
-        secFile->loadedTextureName = path.filename().string(); 
+        secFile->loadedTextureName = path.filename().string();
+        if (secFile->container != nullptr)
+        {
+            delete secFile->container;
+            secFile->container = nullptr;
+        }
         UpdatePreview();
     }
 }
@@ -140,7 +145,7 @@ void SecFileUI::DrawBitSlider()
 
 void SecFileUI::UpdatePreview()
 {
-    std::cout << "Update Preview" << std::endl;
+    std::cout << "Update Preview to "<< (int)secFile->bitDepth << std::endl;
     
     if (secFile->loadedTexture == nullptr)return;
     if (previewTexture != nullptr)UnloadTexture(*previewTexture);
@@ -149,11 +154,13 @@ void SecFileUI::UpdatePreview()
     if (secFile->bitDepth > 0)
     {
         auto colors = SecFile::ImageToByteVector(img);
-        BitStream bs(colors, secFile->bitDepth);
-        long dataSize = SecFile::GetSizeInBytes(img.width, img.height, secFile->bitDepth);
-        std::vector<uint8_t> data = Random::GetBytes(dataSize);
-        bs.WriteBytes(data);
-        std::memcpy(img.data, bs.data.data(), dataSize);
+        uint8_t mask = BitStream::GetMask(0, secFile->bitDepth - 1);
+        for (int c=0; c<colors.size(); c++)
+        {
+            colors[c] &= ~mask;
+            colors[c] |= (Random::GetByte() & mask);
+        }
+        std::memcpy(img.data, colors.data(), colors.size());
     }
     
     previewTexture = new Texture2D(LoadTextureFromImage(img));
