@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "Extensions.h"
 #include "Random.h"
 #include "raygui.h"
 #include "SecFile.h"
@@ -21,16 +22,41 @@ SecFileUI::SecFileUI(SecFile* secFile, Vector2 screenSize)
 void SecFileUI::Draw()
 {
     DrawImageDropZone();
+    if (secFile->loadedTexture == nullptr)return;
+    
     DrawMenu();
     if (secFile->container != nullptr)
     {
-        DrawContent();   
+        DrawContainer();   
     }
 }
 
 void SecFileUI::DrawImageDropZone()
 {
-    Rectangle rect{0.f,0.f, screenSize.x-350, screenSize.y};
+    Rectangle rect {0,0, screenSize.x,screenSize.y};
+    if (secFile->container != nullptr)
+    {
+        rect.width -= 320 + padding;
+        rect.x = padding;
+    }
+    
+    if (previewTexture != nullptr)
+    {
+        rect = FitSizeInto(previewTexture->width, previewTexture->height, rect);
+        Rectangle source {0.f,0.f, (float)previewTexture->width, (float)previewTexture->height};
+        Texture2D tex = *previewTexture;
+        DrawTexturePro(tex, source, rect, {0.,0.}, 0., WHITE);
+    }else
+    {
+        Vector2 center{screenSize.x/2.f, screenSize.y/2.f};
+        float extend = 50;
+        DrawTextEx(*font,"Drop file here! (.jpg, .png)",{center.x-150, center.y-100},32, 1, WHITE);
+        
+        Texture2D tex = *GetDropTexture();
+        Rectangle dest{center.x - extend, center.y - extend, extend*2, extend*2};
+        DrawTexturePro(tex, {0.f,0.f, (float)tex.width, (float)tex.height}, dest, {0.f,0.f}, 0.f, WHITE);
+    }
+
     std::string filePath;
     if (IsFileDroppedInRect(rect, filePath))
     {
@@ -44,22 +70,6 @@ void SecFileUI::DrawImageDropZone()
         secFile->loadedTexture = new Texture2D(LoadTexture(filePath.c_str()));
         secFile->loadedTextureName = path.filename().string(); 
         UpdatePreview();
-    }
-
-    if (previewTexture != nullptr)
-    {
-        Rectangle source {0.f,0.f, (float)previewTexture->width, (float)previewTexture->height};
-        Texture2D tex = *previewTexture;
-        DrawTexturePro(tex, source, rect, {0.,0.}, 0., WHITE);
-    }else
-    {
-        Vector2 center{screenSize.x/2.f, screenSize.y/2.f};
-        float extend = 50;
-        DrawTextEx(*font,"Drop file here! (.jpg, .png)",{center.x-150, center.y-100},32, 1, WHITE);
-        
-        Texture2D tex = *GetDropTexture();
-        Rectangle dest{center.x - extend, center.y - extend, extend*2, extend*2};
-        DrawTexturePro(tex, {0.f,0.f, (float)tex.width, (float)tex.height}, dest, {0.f,0.f}, 0.f, WHITE);
     }
 }
 
@@ -90,19 +100,30 @@ bool SecFileUI::IsFileDroppedInRect(const Rectangle& rect, std::string& path)
 
 void SecFileUI::DrawMenu()
 {
-    Vector2 size{160, 100};
-    Rectangle rect{padding, screenSize.y - padding - size.y, size.x, size.y};
-    DrawRectangle(rect.x, rect.y, rect.width, rect.height, DARKBROWN);
-    
+    if (secFile->container == nullptr)
+    {
+        if (secFile->bitDepth < 1)
+        {
+            GuiDisable();
+            DrawOpenButton();
+            GuiEnable();
+        }else
+        {
+            DrawOpenButton();
+        }
+    }else
+    {
+        DrawSaveButton();
+    }
+        
     DrawBitSlider();
-    DrawOpenButton();
-    DrawSaveButton();
+    if (secFile->loadedTexture != nullptr)DrawSize();
 }
 
 void SecFileUI::DrawBitSlider()
 {
-    Rectangle rect{padding + 90, screenSize.y - 40, 150, 25};
-    std::string label = "Bit Slider";
+    Rectangle rect{padding + space + 150, screenSize.y - padding - 25, 150, 25};
+    std::string label = "BitDepth";
 
     std::stringstream value;
     int bitDepth = (int)secFile->bitDepth;
@@ -141,17 +162,20 @@ void SecFileUI::UpdatePreview()
 
 void SecFileUI::DrawOpenButton()
 {
-    Rectangle rect{padding, screenSize.y - 100, 100, 25};
+    Rectangle rect{padding, screenSize.y - padding - 25, 100, 25};
     if (GuiButton(rect,"Open") == 1)
     {
         std::cout << "Open" << std::endl;
-        secFile->LoadContainer();
+        if (secFile->bitDepth > 0)
+        {
+            secFile->LoadContainer();
+        }
     }
 }
 
 void SecFileUI::DrawSaveButton()
 {
-    Rectangle rect{padding, screenSize.y - 70, 100, 25};
+    Rectangle rect{padding, screenSize.y - padding - 25, 100, 25};
     if (GuiButton(rect,"Save") == 1)
     {
         std::cout << "Save" << std::endl;
@@ -159,7 +183,7 @@ void SecFileUI::DrawSaveButton()
     }
 }
 
-void SecFileUI::DrawContent()
+void SecFileUI::DrawContainer()
 {
     Vector2 size {300,screenSize.y - padding*2};
     Rectangle rect{screenSize.x - padding - size.x, screenSize.y - padding - size.y, size.x, size.y};
@@ -178,24 +202,36 @@ void SecFileUI::DrawContent()
     {
         //text
         Vector2 size{150,25};
-        Rectangle fRect{rect.x + padding, rect.y + padding + f*size.y + (f > 0 ? (f-1)*space : 0), size.x, size.y};
-        DrawText(files[f].fileName.c_str(), fRect.x, fRect.y, 14, WHITE);
+        Vector2 pos {rect.x + padding, rect.y + padding + f*size.y + (f > 0 ? (f-1)*space : 0)};
+        DrawTextEx(*font,files[f].fileName.c_str(), {pos.x, pos.y}, 14, 1, WHITE);
 
         //del
-        Rectangle delRect{fRect.x+150, fRect.y, 25, 25};
-        if (GuiButton(delRect, "X")==1)
+        Rectangle delRect{rect.x + 200, pos.y, 40, 25};
+        if (GuiButton(delRect, "Del")==1)
         {
             secFile->RemoveFileAt(f);
             return;
         }
 
         //Save
-        Rectangle saveRect{delRect.x + delRect.width + space, delRect.y, 25, 25};
-        if (GuiButton(saveRect, "S") == 1)
+        Rectangle saveRect{delRect.x + delRect.width + space, delRect.y, 40, 25};
+        if (GuiButton(saveRect, "Exp") == 1)
         {
             secFile->ExportFileAt(f);
         }
     }
+}
+
+void SecFileUI::DrawSize()
+{
+    if (secFile->loadedTexture == nullptr)return;
+    
+    Vector2 pos = {padding + 400, screenSize.y - padding - 20};
+    auto imgSize = SecFile::GetSizeInBytes(secFile->loadedTexture->width, secFile->loadedTexture->height, secFile->bitDepth);
+    auto contentSize = secFile->container == nullptr ? 0 : secFile->container->GetSize() + KEY.size();
+    std::stringstream ss;
+    ss << contentSize << "/" << imgSize;
+    DrawTextEx(*font, ss.str().c_str(), {pos.x, pos.y}, 14, 1, contentSize > imgSize ? RED : GREEN);
 }
 
 void SecFileUI::SetFont(Font* font)

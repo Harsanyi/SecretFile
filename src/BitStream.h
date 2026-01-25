@@ -6,12 +6,13 @@
 #include "Container.h"
 #include "FileData.h"
 
+static const std::string KEY = "CONTAINER";
+
 class BitStream
 {
 private:
     void Pos2Indexes(const uint64_t pos, int& byteIndex, int& bitIndex);
     uint64_t Indexes2Pos(const int byteIndex, const int bitIndex);
-    const std::string KEY = "CONTAINER";
     
 public:
     std::vector<uint8_t>& data;

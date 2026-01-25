@@ -23,6 +23,7 @@ public:
     void UpdatePreview();
     void DrawOpenButton();
     void DrawSaveButton();
-    void DrawContent();
+    void DrawContainer();
+    void DrawSize();
     void SetFont(Font* font);
 };
