@@ -279,7 +279,31 @@ void SecFileUI::UpdateImagePreview()
 void SecFileUI::UpdateAudioPreview()
 {
     if (previewSound != nullptr)UnloadSound(*previewSound);
-    previewSound = new Sound(LoadSoundFromWave(*secFile->loadedWave));
+
+    if (secFile->bitDepth == 0)
+    {
+        previewSound = new Sound(LoadSoundFromWave(*secFile->loadedWave));
+        return;
+    }
+
+    if (secFile->loadedWave->channels != 1 || secFile->loadedWave->sampleRate != 16)
+    {
+        WaveFormat(secFile->loadedWave, secFile->loadedWave->sampleRate, 16, 1);
+    }
+    uint8_t* dataPtr = (uint8_t*)secFile->loadedWave->data;
+    std::vector<uint8_t> data(dataPtr, dataPtr + secFile->loadedWave->frameCount * 2);
+    uint8_t bitDepth = secFile->bitDepth;
+    BitStream bs(data,bitDepth);
+    
+    uint64_t testDataSize = SecFile::GetSizeInBytes(data.size(), secFile->bitDepth);
+    std::vector<uint8_t> testData = Random::GetBytes(testDataSize);
+
+    bs.WriteBytes(testData);
+    Wave prevWave = *secFile->loadedWave;
+    std::memcpy(prevWave.data, &bs.data, bs.data.size());
+
+    previewSound = new Sound(LoadSoundFromWave(prevWave));
+    UnloadWave(prevWave);
 }
 
 void SecFileUI::DrawOpenButton()

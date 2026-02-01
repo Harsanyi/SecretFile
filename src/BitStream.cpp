@@ -9,7 +9,28 @@
 BitStream::BitStream(std::vector<uint8_t>& data, uint8_t bitDepth) : data(data)
 {
     this->bitPosition = 0;
-    this->bitDepth = bitDepth;
+    SetBitDepth(bitDepth);
+}
+
+void BitStream::SetBitDepth(uint8_t bitDepth)
+{
+    bitDepths.clear();
+    while (bitDepth > 8)
+    {
+        bitDepths.insert(bitDepths.begin(), 8);
+        bitDepth -= 8;
+    }
+    bitDepths.insert(bitDepths.begin(), bitDepth);
+}
+
+uint8_t BitStream::GetBitDepth() const
+{
+    uint8_t bitDepth = 0;
+    for (auto depth : bitDepths)
+    {
+        bitDepth += depth;
+    }
+    return bitDepth;
 }
 
 void BitStream::Pos2Indexes(const uint64_t pos, int& byteIndex, int& bitIndex)
@@ -21,6 +42,11 @@ void BitStream::Pos2Indexes(const uint64_t pos, int& byteIndex, int& bitIndex)
 uint64_t BitStream::Indexes2Pos(const int byteIndex, const int bitIndex)
 {
     return byteIndex * 8 + bitIndex;
+}
+
+uint8_t BitStream::GetBitDepth(const uint64_t index)
+{
+    return bitDepths[index % bitDepths.size()];
 }
 
 uint8_t BitStream::GetMask(const int start, const int end)
@@ -202,10 +228,12 @@ uint8_t BitStream::ReadBits(const uint8_t count)
         int byteIndex, bitIndex;
         Pos2Indexes(bitPosition, byteIndex, bitIndex);
 
+        uint8_t bitDepth = GetBitDepth(bitIndex);
         while (bitIndex >= bitDepth)
         {
             byteIndex++;
             bitIndex -= bitDepth;
+            bitDepth = GetBitDepth(byteIndex);
         }
 
         int readable = std::min(bitDepth-bitIndex, count-readed);
@@ -232,10 +260,12 @@ void BitStream::WriteBits(uint8_t value, const uint8_t count)
     {
         int byteIndex, bitIndex;
         Pos2Indexes(bitPosition, byteIndex, bitIndex);
+        uint8_t bitDepth = GetBitDepth(bitIndex);
         while (bitIndex >= bitDepth)
         {
             byteIndex++;
             bitIndex -= bitDepth;
+            bitDepth = GetBitDepth(byteIndex);
         }
 
         int writeable = std::min(bitDepth - bitIndex, count - writed);

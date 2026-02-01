@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 void SecFile::WriteDataToImage(Image& img, const std::vector<uint8_t>& data, uint8_t bitDepth)
 {
     auto colors = ImageToByteVector(img);
-    BitStream bs(colors, bitDepth);
+    BitStream bs(colors,bitDepth);
     uint64_t size = data.size();
     bs.WriteUInt64(size);
     bs.WriteBytes(data);
@@ -22,7 +22,7 @@ void SecFile::WriteDataToImage(Image& img, const std::vector<uint8_t>& data, uin
 std::vector<uint8_t> SecFile::ReadDataFromImage(Image& img, uint8_t bitDepth)
 {
     auto colors = ImageToByteVector(img);
-    BitStream bs(colors, bitDepth);
+    BitStream bs(colors,bitDepth);
     uint64_t size = bs.ReadUInt64();
     return  bs.ReadBytes(size);
 }
@@ -41,6 +41,12 @@ std::vector<uint8_t> SecFile::ImageToByteVector(Image& img)
 long SecFile::GetSizeInBytes(int width, int height, uint8_t bitDepth)
 {
     return width * height * 4 * bitDepth / 8;
+}
+
+long SecFile::GetSizeInBytes(uint64_t byteCount, uint8_t bitDepth)
+{
+    int dataSize = bitDepth / 8 + (bitDepth % 8 == 0 ? 0 : 1);
+    return byteCount * (bitDepth / (float)dataSize);
 }
 
 void SecFile::WriteDataToTexture(Texture2D& texture, const std::vector<uint8_t>& data, uint8_t bitDepth)

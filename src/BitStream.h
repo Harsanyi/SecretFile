@@ -13,13 +13,18 @@ class BitStream
 private:
     void Pos2Indexes(const uint64_t pos, int& byteIndex, int& bitIndex);
     uint64_t Indexes2Pos(const int byteIndex, const int bitIndex);
+    std::vector<uint8_t> bitDepths;
+
+    uint8_t GetBitDepth(const uint64_t index);
     
 public:
     std::vector<uint8_t>& data;
-    uint8_t bitDepth = 4;
     uint64_t bitPosition = 0;
     
     BitStream(std::vector<uint8_t>& data, uint8_t bitDepth);
+
+    void SetBitDepth(uint8_t bitDepth);
+    uint8_t GetBitDepth() const;
 
     static uint8_t GetMask(const int start, const int end);
     int GetCapacityInBits(int bitDepth)const;
