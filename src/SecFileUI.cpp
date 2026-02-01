@@ -21,8 +21,8 @@ SecFileUI::SecFileUI(SecFile* secFile, Vector2 screenSize)
 
 void SecFileUI::Draw()
 {
-    DrawImageDropZone();
-    if (secFile->loadedTexture == nullptr)return;
+    DrawDropZone();
+    if (secFile->loadedTexture == nullptr && secFile->loadedWave == nullptr)return;
     
     DrawMenu();
     if (secFile->container != nullptr)
@@ -31,7 +31,7 @@ void SecFileUI::Draw()
     }
 }
 
-void SecFileUI::DrawImageDropZone()
+void SecFileUI::DrawDropZone()
 {
     Rectangle rect {0,0, screenSize.x,screenSize.y};
     if (secFile->container != nullptr)
@@ -39,24 +39,15 @@ void SecFileUI::DrawImageDropZone()
         rect.width -= 320 + padding;
         rect.x = padding;
     }
-    
-    if (previewTexture != nullptr)
-    {
-        rect = FitSizeInto(previewTexture->width, previewTexture->height, rect);
-        Rectangle source {0.f,0.f, (float)previewTexture->width, (float)previewTexture->height};
-        Texture2D tex = *previewTexture;
-        DrawTexturePro(tex, source, rect, {0.,0.}, 0., WHITE);
-    }else
-    {
-        Vector2 center{screenSize.x/2.f, screenSize.y/2.f};
-        float extend = 50;
-        DrawTextEx(*font,"Drop file here! (.jpg, .png)",{center.x-150, center.y-100},32, 1, WHITE);
-        
-        Texture2D tex = *GetDropTexture();
-        Rectangle dest{center.x - extend, center.y - extend, extend*2, extend*2};
-        DrawTexturePro(tex, {0.f,0.f, (float)tex.width, (float)tex.height}, dest, {0.f,0.f}, 0.f, WHITE);
-    }
 
+    Vector2 center{screenSize.x/2.f, screenSize.y/2.f};
+    float extend = 50;
+    DrawTextEx(*font,"Drop file here! (.jpg, .png, .wav)",{center.x-200, center.y-100},32, 1, WHITE);
+        
+    Texture2D tex = *GetDropTexture();
+    Rectangle dest{center.x - extend, center.y - extend, extend*2, extend*2};
+    DrawTexturePro(tex, {0.f,0.f, (float)tex.width, (float)tex.height}, dest, {0.f,0.f}, 0.f, WHITE);
+    
     std::string filePath;
     if (IsFileDroppedInRect(rect, filePath))
     {
@@ -64,17 +55,120 @@ void SecFileUI::DrawImageDropZone()
 
         fs::path path(filePath);
         std::string ext = path.extension().string();
-        if (ext != ".jpg" && ext != ".jpeg" && ext != ".png")return;
-        
-        if (secFile->loadedTexture != nullptr)UnloadTexture(*secFile->loadedTexture);
-        secFile->loadedTexture = new Texture2D(LoadTexture(filePath.c_str()));
-        secFile->loadedTextureName = path.filename().string();
-        if (secFile->container != nullptr)
+
+        if (ext == ".jpg" || ext == ".png" || ext == ".jpeg")
         {
-            delete secFile->container;
-            secFile->container = nullptr;
+            UnloadPreviews();
+            secFile->LoadImageFile(filePath);
+            UpdatePreview();
+        }else
+
+        if (ext == ".wav" || ext == ".mp3")
+        {
+            UnloadPreviews();
+            secFile->LoadAudioFile(filePath);
+            UpdatePreview();
+        }else
+        {
+            TraceLog(LOG_WARNING, "Unsupported file extension %s", ext.c_str());
         }
-        UpdatePreview();
+    }
+
+    if (previewTexture != nullptr)
+    {
+        DrawPreviewTexture(rect);
+    }
+
+    if (previewSound != nullptr)
+    {
+        DrawPreviewAudio(rect);
+    }
+}
+
+void SecFileUI::DrawPreviewTexture(Rectangle rect)
+{
+    rect = FitSizeInto(previewTexture->width, previewTexture->height, rect);
+    Rectangle source {0.f,0.f, (float)previewTexture->width, (float)previewTexture->height};
+    Texture2D tex = *previewTexture;
+    DrawTexturePro(tex, source, rect, {0.,0.}, 0., WHITE);
+}
+
+void SecFileUI::DrawPreviewAudio(Rectangle rect)
+{
+    Vector2 viewSize = {rect.width, 300};
+    Rectangle viewRect = FitSizeInto(viewSize.x, viewSize.y, rect);
+
+    Color bgColor= {54,101,107, 255};
+    Color midLineColor {71,112, 132, 255};
+    Color waveColor {242,78,70,255};
+
+    float midHeight = viewRect.y + viewRect.height / 2;
+    DrawRectangle(viewRect.x, viewRect.y, viewRect.width, viewRect.height, bgColor);
+    DrawLine(viewRect.x, midHeight, viewRect.x + viewRect.width, midHeight, midLineColor);
+
+    if (previewWaveData.size() != viewRect.width)
+    {
+        previewWaveData = ExtractSizedSamples(secFile->loadedWave, viewRect.width);
+    }
+    
+    for (int i=0; i < previewWaveData.size(); i++)
+    {
+        Vector2 start{viewRect.x + i, midHeight};
+        Vector2 end{start.x, midHeight + (viewRect.height / 2 * previewWaveData[i])};
+        DrawLine(start.x, start.y, end.x, end.y, waveColor);
+    }
+
+    long duration = secFile->loadedWave->frameCount / secFile->loadedWave->sampleRate * 1000;
+    long elapsed = isAudioPlaying ? std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - audioStartPlaying).count() : 0;
+
+    std::stringstream timeText;
+    timeText << (elapsed / 60000) << ":" << std::setw(2) << std::setfill('0') << (elapsed / 1000 % 60);
+    timeText << " / ";
+    timeText << (duration / 60000) << ":" << std::setw(2) << std::setfill('0') << (duration / 1000 % 60);
+    DrawTextEx(
+        *font,
+        timeText.str().c_str(),
+        {viewRect.x + padding*2 + 100, viewRect.y + viewRect.height - padding - 12},
+        14,
+        1,
+        WHITE);
+
+    if (previewSound != nullptr && IsSoundPlaying(*previewSound))
+    {
+        int playPos = viewRect.width * (elapsed / (float)duration);
+        DrawLine(viewRect.x + playPos, viewRect.y, viewRect.x + playPos, viewRect.y + viewRect.height, WHITE);
+    }
+
+    Rectangle buttonRect {
+        viewRect.x + padding,
+    (viewRect.y + viewRect.height) - (padding + 25),
+    100,
+    25};
+
+    if (isAudioPlaying)
+    {
+        if (GuiButton(buttonRect,"Stop"))
+        {
+            isAudioPlaying = false;
+        }
+    }else
+    {
+        if (GuiButton(buttonRect,"Play"))
+        {
+            isAudioPlaying = true;
+        }
+    }
+
+    if (isAudioPlaying != IsSoundPlaying(*previewSound))
+    {
+        if (isAudioPlaying)
+        {
+            PlaySound(*previewSound);
+            audioStartPlaying = clock::now();
+        }else
+        {
+            StopSound(*previewSound);
+        }
     }
 }
 
@@ -134,7 +228,18 @@ void SecFileUI::DrawBitSlider()
     int bitDepth = (int)secFile->bitDepth;
     value << bitDepth;
     float sliderVal = bitDepth;
-    GuiSlider(rect, label.c_str(), value.str().c_str(), &sliderVal, 0.f, 8.f);
+    float maxValue = -1;
+    if (secFile->loadedTexture != nullptr)
+    {
+        maxValue = 8.f;
+    }else if (secFile->loadedWave != nullptr)
+    {
+        maxValue = 16.f;
+    }else
+    {
+        throw new std::exception("Something should be loaded!");
+    }
+    GuiSlider(rect, label.c_str(), value.str().c_str(), &sliderVal, 0.f, maxValue);
     if (bitDepth != std::round(sliderVal))
     {
         bitDepth = std::round(sliderVal);
@@ -147,9 +252,13 @@ void SecFileUI::UpdatePreview()
 {
     std::cout << "Update Preview to "<< (int)secFile->bitDepth << std::endl;
     
-    if (secFile->loadedTexture == nullptr)return;
+    if (secFile->loadedTexture != nullptr)UpdateImagePreview();
+    if (secFile->loadedWave != nullptr)UpdateAudioPreview();
+}
+
+void SecFileUI::UpdateImagePreview()
+{
     if (previewTexture != nullptr)UnloadTexture(*previewTexture);
-    
     Image img = LoadImageFromTexture(*secFile->loadedTexture);
     if (secFile->bitDepth > 0)
     {
@@ -165,6 +274,12 @@ void SecFileUI::UpdatePreview()
     
     previewTexture = new Texture2D(LoadTextureFromImage(img));
     UnloadImage(img);
+}
+
+void SecFileUI::UpdateAudioPreview()
+{
+    if (previewSound != nullptr)UnloadSound(*previewSound);
+    previewSound = new Sound(LoadSoundFromWave(*secFile->loadedWave));
 }
 
 void SecFileUI::DrawOpenButton()
@@ -244,4 +359,60 @@ void SecFileUI::DrawSize()
 void SecFileUI::SetFont(Font* font)
 {
     this->font = font;
+}
+
+std::vector<float> SecFileUI::ExtractSizedSamples(Wave* wave, const int sampleCount)
+{
+    if (wave->channels != 1 || wave->sampleSize != 16)
+    {
+        WaveFormat(wave, wave->sampleRate, 16, 1);
+    }
+
+    int16_t* data = (int16_t*)wave->data;
+    std::vector<int16_t> samples(data, data + wave->frameCount);
+    std::vector<float> results(sampleCount);
+    int step = samples.size()/results.size();
+
+    for (int i=0; i<results.size(); i++)
+    {
+        int start = i*step;
+        int end = std::min(start+step, (int)samples.size());
+        int range = end - start;
+        int avg = 0;
+        for (int s=start; s<end; s++)
+        {
+            avg += samples[s] / range;
+        }
+        results[i] = (float)avg / std::numeric_limits<int16_t>::max();
+    }
+
+    float highest = 0.f;
+    for (auto v : results)
+    {
+        if (std::abs(v) > highest)highest = std::abs(v);
+    }
+
+    for (int i=0; i<results.size(); i++)
+    {
+        results[i] /= highest;
+    }
+
+    return results;
+}
+
+void SecFileUI::UnloadPreviews()
+{
+    if (previewTexture != nullptr)UnloadTexture(*previewTexture);
+    delete previewTexture;
+    previewTexture = nullptr;
+
+    isAudioPlaying = false;
+    if (previewSound != nullptr)
+    {
+        if (IsSoundPlaying(*previewSound))StopSound(*previewSound);
+        UnloadSound(*previewSound);
+        delete previewSound;
+        previewSound = nullptr;
+    }
+    previewWaveData.clear();
 }

@@ -28,6 +28,8 @@ void Init()
 	font = LoadFont("Roboto.ttf");
 	GuiSetFont(font);
 	ui.SetFont(&font);
+
+	InitAudioDevice();
 }
 
 void Update()

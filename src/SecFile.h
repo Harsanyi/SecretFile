@@ -20,7 +20,8 @@ public:
     static void WriteContainerToImage(Container& container, Image& img, uint8_t bitDepth);
 
     Texture2D* loadedTexture = nullptr;
-    std::string loadedTextureName;
+    Wave* loadedWave = nullptr;
+    std::string loadedFileName;
     uint8_t bitDepth = 1;
     Container* container = nullptr;
 
@@ -29,4 +30,8 @@ public:
     void SaveImage();
     void RemoveFileAt(const int index);
     void ExportFileAt(const int index);
+    void UnloadFiles();
+    void LoadImageFile(const std::string& path);
+    void LoadAudioFile(const std::string& path);
+    void ResetContainer();
 };

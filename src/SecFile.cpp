@@ -137,7 +137,7 @@ void SecFile::SaveImage()
     std::cout << "Save image" << std::endl;
     if (loadedTexture == nullptr)return;
 
-    fs::path path(loadedTextureName);
+    fs::path path(loadedFileName);
     std::stringstream ss;
     ss << path.stem().string() << "_mod.png";
     Image img = LoadImageFromTexture(*loadedTexture);
@@ -162,4 +162,44 @@ void SecFile::ExportFileAt(const int index)
     FileData file = container->files[index];
     SaveFileData(file.fileName.c_str(), file.data.data(), file.data.size());
     std::cout << "File saved:"<< file.fileName << std::endl;
+}
+
+void SecFile::UnloadFiles()
+{
+    if (loadedTexture != nullptr)UnloadTexture(*loadedTexture);
+    delete loadedTexture;
+    loadedTexture = nullptr;
+    
+    if (loadedWave != nullptr)UnloadWave(*loadedWave);
+    delete loadedWave;
+    loadedWave = nullptr;
+}
+
+void SecFile::LoadImageFile(const std::string& path)
+{
+    UnloadFiles();
+    ResetContainer();
+    
+    loadedTexture = new Texture2D(LoadTexture(path.c_str()));
+    fs::path file(path);
+    loadedFileName = file.filename().string();
+}
+
+void SecFile::LoadAudioFile(const std::string& path)
+{
+    UnloadFiles();
+    ResetContainer();
+    
+    loadedWave = new Wave(LoadWave(path.c_str()));
+    fs::path file(path);
+    loadedFileName = file.filename().string();
+}
+
+void SecFile::ResetContainer()
+{
+    if (container != nullptr)
+    {
+        delete container;
+        container = nullptr;
+    }
 }
