@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 void SecFile::WriteDataToImage(Image& img, const std::vector<uint8_t>& data, uint8_t bitDepth)
 {
     auto colors = ImageToByteVector(img);
-    BitStream bs(colors,bitDepth);
+    BitStream bs(colors,BitStream::GetByteLevelBitDepths(bitDepth,1));
     uint64_t size = data.size();
     bs.WriteUInt64(size);
     bs.WriteBytes(data);
@@ -22,7 +22,7 @@ void SecFile::WriteDataToImage(Image& img, const std::vector<uint8_t>& data, uin
 std::vector<uint8_t> SecFile::ReadDataFromImage(Image& img, uint8_t bitDepth)
 {
     auto colors = ImageToByteVector(img);
-    BitStream bs(colors,bitDepth);
+    BitStream bs(colors,BitStream::GetByteLevelBitDepths(bitDepth,1));
     uint64_t size = bs.ReadUInt64();
     return  bs.ReadBytes(size);
 }
@@ -68,7 +68,7 @@ Container* SecFile::ReadContainerFromTexture(Texture2D& texture, uint8_t bitDept
 Container* SecFile::ReadContainerFromImage(Image& img, uint8_t bitDepth)
 {
     std::vector<uint8_t> imgData = ImageToByteVector(img);
-    BitStream bs(imgData,bitDepth);
+    BitStream bs(imgData,BitStream::GetByteLevelBitDepths(bitDepth,1));
     return bs.ReadContainer();
 }
 
@@ -83,7 +83,7 @@ void SecFile::WriteContainerToImage(Container& container, Image& img, uint8_t bi
     }
     
     std::vector<uint8_t> imgData = ImageToByteVector(img);
-    BitStream bs(imgData,bitDepth);
+    BitStream bs(imgData,BitStream::GetByteLevelBitDepths(bitDepth,1));
     bs.WriteContainer(container);
     std::memcpy(img.data, bs.data.data(), imgData.size());
 }

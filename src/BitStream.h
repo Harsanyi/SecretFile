@@ -21,9 +21,11 @@ public:
     std::vector<uint8_t>& data;
     uint64_t bitPosition = 0;
     
-    BitStream(std::vector<uint8_t>& data, uint8_t bitDepth);
+    BitStream(std::vector<uint8_t>& data, std::vector<uint8_t> bitDepths);
 
-    void SetBitDepth(uint8_t bitDepth);
+    static std::vector<uint8_t> GetByteLevelBitDepths(uint8_t bitDepth, uint8_t bytes);
+    
+    void SetBitDepth(uint8_t bitDepth, uint8_t bytes);
     uint8_t GetBitDepth() const;
 
     static uint8_t GetMask(const int start, const int end);

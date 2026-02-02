@@ -6,21 +6,33 @@
 
 #include "Random.h"
 
-BitStream::BitStream(std::vector<uint8_t>& data, uint8_t bitDepth) : data(data)
+BitStream::BitStream(std::vector<uint8_t>& data, std::vector<uint8_t> bitDepths) : data(data)
 {
     this->bitPosition = 0;
-    SetBitDepth(bitDepth);
+    this->bitDepths = bitDepths;
 }
 
-void BitStream::SetBitDepth(uint8_t bitDepth)
+std::vector<uint8_t> BitStream::GetByteLevelBitDepths(uint8_t bitDepth, uint8_t bytes)
 {
-    bitDepths.clear();
+    std::vector<uint8_t> result(0);
     while (bitDepth > 8)
     {
-        bitDepths.insert(bitDepths.begin(), 8);
+        result.push_back(8);
         bitDepth -= 8;
     }
-    bitDepths.insert(bitDepths.begin(), bitDepth);
+    result.push_back(bitDepth);
+
+    while (result.size() < bytes)
+    {
+        result.push_back(0);
+    }
+    
+    return result;
+}
+
+void BitStream::SetBitDepth(uint8_t bitDepth, uint8_t bytes)
+{
+    bitDepths = GetByteLevelBitDepths(bitDepth, bytes);
 }
 
 uint8_t BitStream::GetBitDepth() const

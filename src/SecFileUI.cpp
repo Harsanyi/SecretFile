@@ -108,7 +108,7 @@ void SecFileUI::DrawPreviewAudio(Rectangle rect)
 
     if (previewWaveData.size() != viewRect.width)
     {
-        previewWaveData = ExtractSizedSamples(secFile->loadedWave, viewRect.width);
+        previewWaveData = ExtractSizedSamples(previewWave, viewRect.width);
     }
     
     for (int i=0; i < previewWaveData.size(); i++)
@@ -279,31 +279,38 @@ void SecFileUI::UpdateImagePreview()
 void SecFileUI::UpdateAudioPreview()
 {
     if (previewSound != nullptr)UnloadSound(*previewSound);
+    if (previewWave != nullptr)UnloadWave(*previewWave);
 
+    previewWave = new Wave(*secFile->loadedWave);
+    long dataSize = previewWave->frameCount * previewWave->channels * (previewWave->sampleSize / 8);
+    previewWave->data = MemAlloc(dataSize);
+    memcpy(previewWave->data, secFile->loadedWave->data, dataSize);
+    
     if (secFile->bitDepth == 0)
     {
         previewSound = new Sound(LoadSoundFromWave(*secFile->loadedWave));
+        previewWaveData.clear();
         return;
     }
-
-    if (secFile->loadedWave->channels != 1 || secFile->loadedWave->sampleRate != 16)
-    {
-        WaveFormat(secFile->loadedWave, secFile->loadedWave->sampleRate, 16, 1);
-    }
-    uint8_t* dataPtr = (uint8_t*)secFile->loadedWave->data;
-    std::vector<uint8_t> data(dataPtr, dataPtr + secFile->loadedWave->frameCount * 2);
-    uint8_t bitDepth = secFile->bitDepth;
-    BitStream bs(data,bitDepth);
     
-    uint64_t testDataSize = SecFile::GetSizeInBytes(data.size(), secFile->bitDepth);
-    std::vector<uint8_t> testData = Random::GetBytes(testDataSize);
-
-    bs.WriteBytes(testData);
-    Wave prevWave = *secFile->loadedWave;
-    std::memcpy(prevWave.data, &bs.data, bs.data.size());
-
-    previewSound = new Sound(LoadSoundFromWave(prevWave));
-    UnloadWave(prevWave);
+    if (previewWave->sampleSize != 16 || previewWave->channels != 1)
+    {
+        WaveFormat(previewWave, (int)previewWave->sampleRate, 16, 1);
+    }
+    
+    uint8_t* dataPtr = (uint8_t*)previewWave->data;
+    std::vector<uint8_t> data(dataPtr, dataPtr + previewWave->frameCount * 2);
+    auto bitDepths = BitStream::GetByteLevelBitDepths(secFile->bitDepth, 2);
+    for (int i = 0; i < data.size(); i++)
+    {
+        uint8_t mask = BitStream::GetMask(0, bitDepths[i%bitDepths.size()]-1);
+        data[i] &= ~mask;
+        data[i] |= (Random::GetByte() & mask);
+    }
+    std::memcpy(previewWave->data, data.data(), data.size());
+    
+    previewSound = new Sound(LoadSoundFromWave(*previewWave));
+    previewWaveData.clear();
 }
 
 void SecFileUI::DrawOpenButton()
@@ -439,4 +446,7 @@ void SecFileUI::UnloadPreviews()
         previewSound = nullptr;
     }
     previewWaveData.clear();
+
+    if (previewWave != nullptr)UnloadWave(*previewWave);
+    previewWave = nullptr;
 }

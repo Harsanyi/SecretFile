@@ -14,6 +14,7 @@ class SecFileUI
     float space = 5;
     Texture2D* previewTexture = nullptr;
     Sound* previewSound = nullptr;
+    Wave* previewWave = nullptr;
     std::vector<float> previewWaveData;
     bool isAudioPlaying = false;
     using clock = std::chrono::steady_clock;
