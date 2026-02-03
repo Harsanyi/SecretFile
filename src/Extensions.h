@@ -35,6 +35,11 @@ inline long ByteCount(const Texture2D& tex)
     return tex.width * tex.height * 4;
 }
 
+inline long ByteCount(const Image& img)
+{
+    return img.width * img.height * 4;
+}
+
 inline long ByteCount(const Wave& wave)
 {
     return wave.frameCount * wave.channels * (wave.sampleSize / 8);

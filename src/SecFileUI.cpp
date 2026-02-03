@@ -332,7 +332,7 @@ void SecFileUI::DrawSaveButton()
     if (GuiButton(rect,"Save") == 1)
     {
         std::cout << "Save" << std::endl;
-        secFile->SaveImage();
+        secFile->SaveLoaded();
     }
 }
 

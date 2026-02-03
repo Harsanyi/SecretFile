@@ -19,6 +19,7 @@ public:
     static Container* ReadContainerFromImage(Image& img, uint8_t bitDepth);
     static Container* ReadContainerFromWave(Wave& wave, uint8_t bitDepth);
     static void WriteContainerToImage(Container& container, Image& img, uint8_t bitDepth);
+    static void WriteContainerToWave(Container& container, Wave& wave, uint8_t bitDepth);
 
     Texture2D* loadedTexture = nullptr;
     Wave* loadedWave = nullptr;
@@ -28,7 +29,7 @@ public:
 
     void LoadContainer();
     void AddFileFromPath(std::string path);
-    void SaveImage();
+    void SaveLoaded();
     void RemoveFileAt(const int index);
     void ExportFileAt(const int index);
     void UnloadFiles();

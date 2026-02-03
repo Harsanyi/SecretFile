@@ -4,6 +4,7 @@
 #include <iostream>
 #include "filesystem"
 #include "BitStream.h"
+#include "Extensions.h"
 #include "Random.h"
 
 namespace fs = std::filesystem;
@@ -83,7 +84,7 @@ Container* SecFile::ReadContainerFromWave(Wave& wave, uint8_t bitDepth)
 
 void SecFile::WriteContainerToImage(Container& container, Image& img, uint8_t bitDepth)
 {
-    long imgSize = GetSizeInBytes(img.width, img.height, bitDepth);
+    long imgSize = GetSizeInBytes(ByteCount(img), 8, bitDepth);
     long contSize = container.GetSize();
     if (contSize >= imgSize)
     {
@@ -95,6 +96,24 @@ void SecFile::WriteContainerToImage(Container& container, Image& img, uint8_t bi
     BitStream bs(imgData,BitStream::GetByteLevelBitDepths(bitDepth,1));
     bs.WriteContainer(container);
     std::memcpy(img.data, bs.data.data(), imgData.size());
+}
+
+void SecFile::WriteContainerToWave(Container& container, Wave& wave, uint8_t bitDepth)
+{
+    long waveSize = GetSizeInBytes(ByteCount(wave), wave.sampleSize, bitDepth);
+    long contSize = container.GetSize();
+    if (contSize >= waveSize)
+    {
+        std::cerr << "Container size:" << contSize << " is too big for img capacity: " << waveSize << std::endl; 
+        return;
+    }
+    
+    uint8_t* dataPtr = (uint8_t*)wave.data;
+    std::vector<uint8_t> waveData(dataPtr, dataPtr + waveSize);
+    
+    BitStream bs(waveData,BitStream::GetByteLevelBitDepths(bitDepth,2));
+    bs.WriteContainer(container);
+    std::memcpy(wave.data, bs.data.data(), waveSize);
 }
 
 void SecFile::LoadContainer()
@@ -157,18 +176,34 @@ void SecFile::AddFileFromPath(std::string path)
     std::cout << "Files:"<< container->files.size() << std::endl;
 }
 
-void SecFile::SaveImage()
+void SecFile::SaveLoaded()
 {
-    std::cout << "Save image" << std::endl;
-    if (loadedTexture == nullptr)return;
+    std::cout << "Save File" << std::endl;
 
     fs::path path(loadedFileName);
-    std::stringstream ss;
-    ss << path.stem().string() << "_mod.png";
-    Image img = LoadImageFromTexture(*loadedTexture);
-    WriteContainerToImage(*container, img, bitDepth);
-    ExportImage(img, ss.str().c_str());
-    UnloadImage(img);
+    if (loadedTexture != nullptr)
+    {
+        std::stringstream ss;
+        ss << path.stem().string() << "_mod.png";
+        Image img = LoadImageFromTexture(*loadedTexture);
+        WriteContainerToImage(*container, img, bitDepth);
+        ExportImage(img, ss.str().c_str());
+        UnloadImage(img);
+    }
+
+    if (loadedWave != nullptr)
+    {
+        std::stringstream ss;
+        ss << path.stem().string() << "_mod.wav";
+
+        Wave wave = Wave(*loadedWave);
+        long dataSize = wave.frameCount * (wave.sampleSize / 8) * wave.channels;
+        wave.data = MemAlloc(dataSize);
+        memcpy(wave.data, loadedWave->data, dataSize);
+        WriteContainerToWave(*container, wave, bitDepth);
+        ExportWave(wave, ss.str().c_str());
+        UnloadWave(wave);
+    }
 }
 
 void SecFile::RemoveFileAt(const int index)
