@@ -38,14 +38,8 @@ std::vector<uint8_t> SecFile::ImageToByteVector(Image& img)
     return  std::vector<uint8_t>(colors, colors + byteCount);
 }
 
-long SecFile::GetSizeInBytes(int width, int height, uint8_t bitDepth)
+long SecFile::GetSizeInBytes(uint64_t byteCount, uint8_t dataSize, uint8_t bitDepth)
 {
-    return width * height * 4 * bitDepth / 8;
-}
-
-long SecFile::GetSizeInBytes(uint64_t byteCount, uint8_t bitDepth)
-{
-    int dataSize = bitDepth / 8 + (bitDepth % 8 == 0 ? 0 : 1);
     return byteCount * (bitDepth / (float)dataSize);
 }
 
@@ -72,6 +66,21 @@ Container* SecFile::ReadContainerFromImage(Image& img, uint8_t bitDepth)
     return bs.ReadContainer();
 }
 
+Container* SecFile::ReadContainerFromWave(Wave& wave, uint8_t bitDepth)
+{
+    if (wave.channels > 1 || wave.sampleSize != 16)
+    {
+        WaveFormat(&wave, wave.sampleRate, 16, 1);
+    }
+    
+    uint8_t* dataPtr = (uint8_t*)wave.data;
+    long size = wave.frameCount * (wave.sampleSize / 8);
+    std::vector<uint8_t> waveData(dataPtr, dataPtr + size);
+
+    BitStream bs(waveData, BitStream::GetByteLevelBitDepths(bitDepth,wave.sampleSize / 8));
+    return bs.ReadContainer();
+}
+
 void SecFile::WriteContainerToImage(Container& container, Image& img, uint8_t bitDepth)
 {
     long imgSize = GetSizeInBytes(img.width, img.height, bitDepth);
@@ -90,12 +99,22 @@ void SecFile::WriteContainerToImage(Container& container, Image& img, uint8_t bi
 
 void SecFile::LoadContainer()
 {
-    if (loadedTexture == nullptr)return;
+    if (loadedTexture == nullptr && loadedWave==nullptr)return;
     if (container != nullptr)
     {
         delete container;
     }
-    container = ReadContainerFromTexture(*loadedTexture, bitDepth);
+
+    if (loadedTexture != nullptr)
+    {
+        container = ReadContainerFromTexture(*loadedTexture, bitDepth);
+    }
+
+    if (loadedWave != nullptr)
+    {
+        container = ReadContainerFromWave(*loadedWave, bitDepth);
+    }
+    
     if (container == nullptr)
     {
         container = new Container();
@@ -208,4 +227,9 @@ void SecFile::ResetContainer()
         delete container;
         container = nullptr;
     }
+}
+
+bool SecFile::HaveLoaded() const
+{
+    return loadedTexture != nullptr || loadedWave != nullptr;
 }

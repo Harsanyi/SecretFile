@@ -29,3 +29,13 @@ inline Rectangle FitSizeInto(int width, int height, Rectangle rect)
     Vector2 center = {rect.x + rect.width / 2, rect.y + rect.height / 2};
     return Rectangle{center.x - width/2, center.y - height/2, (float)width, (float)height};
 }
+
+inline long ByteCount(const Texture2D& tex)
+{
+    return tex.width * tex.height * 4;
+}
+
+inline long ByteCount(const Wave& wave)
+{
+    return wave.frameCount * wave.channels * (wave.sampleSize / 8);
+}

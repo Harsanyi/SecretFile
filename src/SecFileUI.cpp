@@ -216,7 +216,7 @@ void SecFileUI::DrawMenu()
     }
         
     DrawBitSlider();
-    if (secFile->loadedTexture != nullptr)DrawSize();
+    if (secFile->HaveLoaded())DrawSize();
 }
 
 void SecFileUI::DrawBitSlider()
@@ -377,14 +377,29 @@ void SecFileUI::DrawContainer()
 
 void SecFileUI::DrawSize()
 {
-    if (secFile->loadedTexture == nullptr)return;
+    if (!secFile->HaveLoaded())return;
     
     Vector2 pos = {padding + 400, screenSize.y - padding - 20};
-    auto imgSize = SecFile::GetSizeInBytes(secFile->loadedTexture->width, secFile->loadedTexture->height, secFile->bitDepth);
-    auto contentSize = secFile->container == nullptr ? 0 : secFile->container->GetSize() + KEY.size();
+
+    long mediaSize = 0;
+
+    if (secFile->loadedTexture != nullptr)
+    {
+        long byteCount = ByteCount(*secFile->loadedTexture);
+        mediaSize = SecFile::GetSizeInBytes(byteCount, 8, secFile->bitDepth);
+    }
+
+    if (secFile->loadedWave != nullptr)
+    {
+        long byteCount = ByteCount(*secFile->loadedWave);
+        mediaSize = SecFile::GetSizeInBytes(byteCount, secFile->loadedWave->sampleSize, secFile->bitDepth);
+    }
+
+    long contentSize = contentSize = secFile->container == nullptr ? 0 : secFile->container->GetSize() + KEY.size();
+    
     std::stringstream ss;
-    ss << contentSize << "/" << imgSize;
-    DrawTextEx(*font, ss.str().c_str(), {pos.x, pos.y}, 14, 1, contentSize > imgSize ? RED : GREEN);
+    ss << contentSize << "/" << mediaSize;
+    DrawTextEx(*font, ss.str().c_str(), {pos.x, pos.y}, 14, 1, contentSize > mediaSize ? RED : GREEN);
 }
 
 void SecFileUI::SetFont(Font* font)

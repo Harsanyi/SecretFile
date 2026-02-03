@@ -13,11 +13,11 @@ public:
     static void WriteDataToImage(Image& img, const std::vector<uint8_t>& data, uint8_t bitDepth);
     static std::vector<uint8_t> ReadDataFromImage(Image& img, uint8_t bitDepth);
     static std::vector<uint8_t> ImageToByteVector(Image& img);
-    static long GetSizeInBytes(int width, int height, uint8_t bitDepth);
-    static long GetSizeInBytes(uint64_t byteCount, uint8_t bitDepth);
+    static long GetSizeInBytes(uint64_t byteCount, uint8_t dataSize, uint8_t bitDepth);
     static void WriteDataToTexture(Texture2D& texture, const std::vector<uint8_t>& data, uint8_t bitDepth);
     static Container* ReadContainerFromTexture(Texture2D& texture, uint8_t bitDepth);
     static Container* ReadContainerFromImage(Image& img, uint8_t bitDepth);
+    static Container* ReadContainerFromWave(Wave& wave, uint8_t bitDepth);
     static void WriteContainerToImage(Container& container, Image& img, uint8_t bitDepth);
 
     Texture2D* loadedTexture = nullptr;
@@ -35,4 +35,6 @@ public:
     void LoadImageFile(const std::string& path);
     void LoadAudioFile(const std::string& path);
     void ResetContainer();
+
+    bool HaveLoaded() const;
 };
