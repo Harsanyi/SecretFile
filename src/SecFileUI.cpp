@@ -10,6 +10,7 @@
 #include "raygui.h"
 #include "SecFile.h"
 #include "filesystem"
+#include "rlgl.h"
 
 namespace fs = std::filesystem;
 
@@ -17,12 +18,19 @@ SecFileUI::SecFileUI(SecFile* secFile, Vector2 screenSize)
 {
     this->secFile = secFile;
     this->screenSize = screenSize;
+
+    camera = Camera3D();
+    camera.position = Vector3(0, 1, -10);
+    camera.target = Vector3(0, 0, 0);
+    camera.up = Vector3(0, 1, 0);
+    camera.fovy = 45;
+    camera.projection = CAMERA_PERSPECTIVE;
 }
 
 void SecFileUI::Draw()
 {
     DrawDropZone();
-    if (secFile->loadedTexture == nullptr && secFile->loadedWave == nullptr)return;
+    if (!secFile->HaveLoaded())return;
     
     DrawMenu();
     if (secFile->container != nullptr)
@@ -69,6 +77,15 @@ void SecFileUI::DrawDropZone()
             secFile->LoadAudioFile(filePath);
             UpdatePreview();
         }else
+        
+        if (ext == ".obj")
+        {
+            UnloadPreviews();
+            secFile->LoadModelFile(filePath);
+            UpdatePreview();
+        }
+
+        else
         {
             TraceLog(LOG_WARNING, "Unsupported file extension %s", ext.c_str());
         }
@@ -82,6 +99,11 @@ void SecFileUI::DrawDropZone()
     if (previewSound != nullptr)
     {
         DrawPreviewAudio(rect);
+    }
+
+    if (previewModel != nullptr)
+    {
+        DrawPreviewModel();
     }
 }
 
@@ -172,6 +194,15 @@ void SecFileUI::DrawPreviewAudio(Rectangle rect)
     }
 }
 
+void SecFileUI::DrawPreviewModel()
+{
+    BeginMode3D(camera);
+    
+    DrawModel(*previewModel, {0,0,0}, 1, WHITE);
+
+    EndMode3D();
+}
+
 Texture2D* SecFileUI::GetDropTexture()
 {
     if (dropTexture == nullptr)
@@ -235,7 +266,11 @@ void SecFileUI::DrawBitSlider()
     }else if (secFile->loadedWave != nullptr)
     {
         maxValue = 16.f;
-    }else
+    }else if (secFile->loadedModel != nullptr)
+    {
+        maxValue = 32.f;
+    }
+    else
     {
         throw new std::exception("Something should be loaded!");
     }
@@ -254,6 +289,7 @@ void SecFileUI::UpdatePreview()
     
     if (secFile->loadedTexture != nullptr)UpdateImagePreview();
     if (secFile->loadedWave != nullptr)UpdateAudioPreview();
+    if (secFile->loadedModel != nullptr)UpdateModelPreview();
 }
 
 void SecFileUI::UpdateImagePreview()
@@ -278,9 +314,8 @@ void SecFileUI::UpdateImagePreview()
 
 void SecFileUI::UpdateAudioPreview()
 {
-    if (previewSound != nullptr)UnloadSound(*previewSound);
-    if (previewWave != nullptr)UnloadWave(*previewWave);
-
+    UnloadPreviews();
+    
     previewWave = new Wave(*secFile->loadedWave);
     long dataSize = previewWave->frameCount * previewWave->channels * (previewWave->sampleSize / 8);
     previewWave->data = MemAlloc(dataSize);
@@ -311,6 +346,11 @@ void SecFileUI::UpdateAudioPreview()
     
     previewSound = new Sound(LoadSoundFromWave(*previewWave));
     previewWaveData.clear();
+}
+
+void SecFileUI::UpdateModelPreview()
+{
+    previewModel = secFile->loadedModel;
 }
 
 void SecFileUI::DrawOpenButton()

@@ -23,6 +23,8 @@ public:
 
     Texture2D* loadedTexture = nullptr;
     Wave* loadedWave = nullptr;
+    Model* loadedModel = nullptr;
+    
     std::string loadedFileName;
     uint8_t bitDepth = 1;
     Container* container = nullptr;
@@ -35,6 +37,7 @@ public:
     void UnloadFiles();
     void LoadImageFile(const std::string& path);
     void LoadAudioFile(const std::string& path);
+    void LoadModelFile(const std::string& path);
     void ResetContainer();
 
     bool HaveLoaded() const;

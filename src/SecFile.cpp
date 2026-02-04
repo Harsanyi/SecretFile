@@ -9,7 +9,6 @@
 
 namespace fs = std::filesystem;
 
-
 void SecFile::WriteDataToImage(Image& img, const std::vector<uint8_t>& data, uint8_t bitDepth)
 {
     auto colors = ImageToByteVector(img);
@@ -255,6 +254,15 @@ void SecFile::LoadAudioFile(const std::string& path)
     loadedFileName = file.filename().string();
 }
 
+void SecFile::LoadModelFile(const std::string& path)
+{
+    UnloadFiles();
+    ResetContainer();
+    loadedModel = new Model(LoadModel(path.c_str()));
+    fs::path file(path);
+    loadedFileName = file.filename().string();
+}
+
 void SecFile::ResetContainer()
 {
     if (container != nullptr)
@@ -266,5 +274,5 @@ void SecFile::ResetContainer()
 
 bool SecFile::HaveLoaded() const
 {
-    return loadedTexture != nullptr || loadedWave != nullptr;
+    return loadedTexture != nullptr || loadedWave != nullptr || loadedModel != nullptr;
 }

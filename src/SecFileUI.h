@@ -15,10 +15,12 @@ class SecFileUI
     Texture2D* previewTexture = nullptr;
     Sound* previewSound = nullptr;
     Wave* previewWave = nullptr;
+    Model* previewModel = nullptr;
     std::vector<float> previewWaveData;
     bool isAudioPlaying = false;
     using clock = std::chrono::steady_clock;
     clock::time_point audioStartPlaying;
+    Camera3D camera {0};
         
 public:
     SecFileUI(SecFile* secFile,Vector2 screenSize);
@@ -27,6 +29,7 @@ public:
     void DrawDropZone();
     void DrawPreviewTexture(Rectangle rect);
     void DrawPreviewAudio(Rectangle rect);
+    void DrawPreviewModel();
     Texture2D* GetDropTexture();
     bool IsFileDroppedInRect(const Rectangle& rect, std::string& path);
     void DrawMenu();
@@ -34,6 +37,7 @@ public:
     void UpdatePreview();
     void UpdateImagePreview();
     void UpdateAudioPreview();
+    void UpdateModelPreview();
     void DrawOpenButton();
     void DrawSaveButton();
     void DrawContainer();
