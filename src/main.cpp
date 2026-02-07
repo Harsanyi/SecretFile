@@ -1,6 +1,8 @@
 #define RAYGUI_IMPLEMENTATION
 
 #include <format>
+#include <iostream>
+
 #include "raylib.h"
 #include "raygui.h"
 #include "resource_dir.h"
@@ -21,6 +23,7 @@ static Font font;
 void Init()
 {
 	SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
+	SetConfigFlags(FLAG_MSAA_4X_HINT);
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, WINDOW_TITLE);
 	SearchAndSetResourceDir(RESOURCE_DIR);
 	GuiLoadStyle(GUI_STYLE_PATH);
@@ -29,11 +32,19 @@ void Init()
 	GuiSetFont(font);
 	ui.SetFont(&font);
 
+	Shader* shader = new Shader(LoadShader("shaders/red.vs", "shaders/red.fs"));
+	ui.SetShader(shader);
+
 	InitAudioDevice();
 }
 
 void Update()
 {
+	if (secFile.loadedModel != nullptr)
+	{
+		ui.UpdateModelTexture();
+	}
+	
 	BeginDrawing();
 	ClearBackground(BG_COLOR);
 

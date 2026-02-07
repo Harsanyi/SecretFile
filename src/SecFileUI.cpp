@@ -10,6 +10,7 @@
 #include "raygui.h"
 #include "SecFile.h"
 #include "filesystem"
+#include "raymath.h"
 #include "rlgl.h"
 
 namespace fs = std::filesystem;
@@ -20,7 +21,7 @@ SecFileUI::SecFileUI(SecFile* secFile, Vector2 screenSize)
     this->screenSize = screenSize;
 
     camera = Camera3D();
-    camera.position = Vector3(0, 1, -10);
+    camera.position = Vector3(0, 1, -5);
     camera.target = Vector3(0, 0, 0);
     camera.up = Vector3(0, 1, 0);
     camera.fovy = 45;
@@ -103,7 +104,7 @@ void SecFileUI::DrawDropZone()
 
     if (previewModel != nullptr)
     {
-        DrawPreviewModel();
+        DrawPreviewModel(rect);
     }
 }
 
@@ -194,13 +195,35 @@ void SecFileUI::DrawPreviewAudio(Rectangle rect)
     }
 }
 
-void SecFileUI::DrawPreviewModel()
+void SecFileUI::DrawPreviewModel(Rectangle rect)
 {
-    BeginMode3D(camera);
+    if (meshTexture  == nullptr)return;
     
-    DrawModel(*previewModel, {0,0,0}, 1, WHITE);
+    auto src = Rectangle{0,0,(float)meshTexture->texture.width, -(float)meshTexture->texture.height};
+    DrawTexturePro(meshTexture->texture, src, rect, {0,0}, 0, WHITE);
+}
 
+void SecFileUI::UpdateModelTexture()
+{
+    if (meshTexture == nullptr)
+    {
+        meshTexture = new RenderTexture2D(LoadRenderTexture(1920, 1080));
+    }
+    
+    BeginTextureMode(*meshTexture);
+    ClearBackground(DARKGRAY);
+    BeginMode3D(camera);
+
+    auto now = clock::now().time_since_epoch();
+    long ms = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
+    long rotTimeMs = 10000;
+    ms %= rotTimeMs;
+        
+    float rotation = (ms / (float)rotTimeMs)*360.;
+    DrawModelEx(*previewModel, {0,0,0},{0.,1.,0.}, rotation, {1.,1.,1.}, WHITE);
+    
     EndMode3D();
+    EndTextureMode();
 }
 
 Texture2D* SecFileUI::GetDropTexture()
@@ -351,6 +374,7 @@ void SecFileUI::UpdateAudioPreview()
 void SecFileUI::UpdateModelPreview()
 {
     previewModel = secFile->loadedModel;
+    previewModel->materials[0].shader = *shader;
 }
 
 void SecFileUI::DrawOpenButton()
@@ -445,6 +469,11 @@ void SecFileUI::DrawSize()
 void SecFileUI::SetFont(Font* font)
 {
     this->font = font;
+}
+
+void SecFileUI::SetShader(Shader* shader)
+{
+    this->shader = shader;
 }
 
 std::vector<float> SecFileUI::ExtractSizedSamples(Wave* wave, const int sampleCount)
