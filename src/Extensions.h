@@ -1,11 +1,6 @@
 ﻿#pragma once
 #include "raylib.h"
 
-//inline Vector2 operator-(const Vector2& a, const Vector2& b)
-//{
-//    return {a.x-b.x, a.y-b.y};
-//}
-
 template<typename T>
 inline bool Contains(const std::vector<T>& container, const T& element)
 {
@@ -43,4 +38,33 @@ inline long ByteCount(const Image& img)
 inline long ByteCount(const Wave& wave)
 {
     return wave.frameCount * wave.channels * (wave.sampleSize / 8);
+}
+
+inline Model CloneModel(const Model& model)
+{
+    Model clone = model;
+    Mesh& mesh = clone.meshes[0];
+    
+    long vertexDatasize = mesh.vertexCount * sizeof(float) * 3;
+    float* vertices = (float*)MemAlloc(vertexDatasize);
+    memcpy(vertices, model.meshes[0].vertices, vertexDatasize);
+    mesh.vertices = vertices;
+    
+    UpdateMeshBuffer(mesh, 0, vertices, vertexDatasize, 0);
+    return clone;
+}
+
+inline std::vector<float> GetModelVertices(const Model& model)
+{
+    long size = model.meshes[0].vertexCount * 3;
+    float* vertPtr = model.meshes[0].vertices;
+    std::vector<float> vertices(vertPtr, vertPtr + size);
+    return vertices;
+}
+
+inline void SetModelVertices(Model& model, std::vector<float>& vertices)
+{
+    model.meshes[0].vertexCount = vertices.size()/3;
+    model.meshes[0].vertices = vertices.data();
+    UpdateMeshBuffer(model.meshes[0], 0, vertices.data(), vertices.size() * sizeof(float) * 3, 0);
 }

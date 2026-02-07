@@ -373,8 +373,19 @@ void SecFileUI::UpdateAudioPreview()
 
 void SecFileUI::UpdateModelPreview()
 {
-    previewModel = secFile->loadedModel;
+    //if (previewModel != nullptr)UnloadModel(*previewModel);
+    previewModel =  new Model(CloneModel(*secFile->loadedModel));
     previewModel->materials[0].shader = *shader;
+
+    auto verts = GetModelVertices(*previewModel);
+    
+    auto byteMask = BitStream::GetByteLevelBitDepths(secFile->bitDepth, 4);
+    for (int v=0; v<verts.size(); v++)
+    {
+        
+    }
+    
+    SetModelVertices(*previewModel, verts);
 }
 
 void SecFileUI::DrawOpenButton()
