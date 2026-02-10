@@ -61,7 +61,6 @@ inline Model* CloneModel(const Model& model)
     {
         Mesh& modelMesh = model.meshes[m];
         Mesh& mesh = clone->meshes[m];
-        //mesh = modelMesh;
 
         mesh.vertexCount = modelMesh.vertexCount;
         mesh.vertices = (float*)MemAlloc(sizeof(float)*3*modelMesh.vertexCount);
@@ -76,6 +75,8 @@ inline Model* CloneModel(const Model& model)
             mesh.indices = (unsigned short*)MemAlloc(sizeof(unsigned short)*modelMesh.triangleCount);
             memcpy(mesh.indices, modelMesh.indices, sizeof(unsigned short)*modelMesh.triangleCount);
         }
+
+        clone->meshes[m] = mesh;
         
         UploadMesh(&mesh,false);
     }
@@ -87,13 +88,16 @@ inline std::vector<uint8_t> GetModelVertData(const Model& model)
 {
     long size = model.meshes[0].vertexCount * 3 * 4;
     uint8_t* vertPtr = (uint8_t*)model.meshes[0].vertices;
-    std::vector<uint8_t> vertices(vertPtr, vertPtr + size);
+    std::vector<uint8_t> vertices(size);
+    memcpy(vertices.data(), vertPtr, size);
     return vertices;
 }
 
 inline void SetModelVertData(Model& model, std::vector<uint8_t>& data)
 {
     model.meshes[0].vertexCount = data.size()/(3*4);
-    model.meshes[0].vertices = (float*)data.data();
-    UpdateMeshBuffer(model.meshes[0], 0, data.data(), data.size() * 4 * 3, 0);
+    model.meshes[0].vertices = (float*)MemAlloc(data.size());
+    memcpy(model.meshes[0].vertices, data.data(), data.size());
+    
+    UpdateMeshBuffer(model.meshes[0], 0, model.meshes[0].vertices, data.size(), 0);
 }

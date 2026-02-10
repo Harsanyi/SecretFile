@@ -373,16 +373,22 @@ void SecFileUI::UpdateAudioPreview()
 
 void SecFileUI::UpdateModelPreview()
 {
-    //if (previewModel != nullptr)UnloadModel(*previewModel);
-    previewModel =  CloneModel(*secFile->loadedModel);
+    if (secFile->bitDepth < 1)
+    {
+        previewModel = secFile->loadedModel;
+        previewModel->materials[0].shader = *shader;
+        return;
+    }
+    
+    previewModel = CloneModel(*secFile->loadedModel);
     previewModel->materials[0].shader = *shader;
-
+    
     auto data = GetModelVertData(*previewModel);
     
     auto bitDepths = BitStream::GetByteLevelBitDepths(secFile->bitDepth, 4);
     for (int d=0; d<data.size(); d++)
     {
-        uint8_t mask = BitStream::GetMask(0, bitDepths[d%bitDepths.size()]);
+        uint8_t mask = BitStream::GetMask(0, bitDepths[d%bitDepths.size()]-1);
         data[d] &= ~mask;
         data[d] |= (Random::GetByte() & mask);
     }
