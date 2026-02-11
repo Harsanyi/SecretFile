@@ -18,8 +18,10 @@ public:
     static Container* ReadContainerFromTexture(Texture2D& texture, uint8_t bitDepth);
     static Container* ReadContainerFromImage(Image& img, uint8_t bitDepth);
     static Container* ReadContainerFromWave(Wave& wave, uint8_t bitDepth);
+    static Container* ReadContainerFromModel(Model& model, uint8_t bitDepth);
     static void WriteContainerToImage(Container& container, Image& img, uint8_t bitDepth);
     static void WriteContainerToWave(Container& container, Wave& wave, uint8_t bitDepth);
+    static void WriteContainerToModel(Container& container, Model& model, uint8_t bitDepth);
 
     Texture2D* loadedTexture = nullptr;
     Wave* loadedWave = nullptr;

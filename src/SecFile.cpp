@@ -81,6 +81,13 @@ Container* SecFile::ReadContainerFromWave(Wave& wave, uint8_t bitDepth)
     return bs.ReadContainer();
 }
 
+Container* SecFile::ReadContainerFromModel(Model& model, uint8_t bitDepth)
+{
+    auto data = GetModelVertData(model);
+    BitStream bs(data, BitStream::GetByteLevelBitDepths(bitDepth,4));
+    return bs.ReadContainer();
+}
+
 void SecFile::WriteContainerToImage(Container& container, Image& img, uint8_t bitDepth)
 {
     long imgSize = GetSizeInBytes(ByteCount(img), 8, bitDepth);
@@ -115,9 +122,28 @@ void SecFile::WriteContainerToWave(Container& container, Wave& wave, uint8_t bit
     std::memcpy(wave.data, bs.data.data(), waveSize);
 }
 
+void SecFile::WriteContainerToModel(Container& container, Model& model, uint8_t bitDepth)
+{
+    long dataSize = GetSizeInBytes(ByteCount(model), 4*8, bitDepth);
+    long contSize = container.GetSize();
+    if (contSize >= dataSize)
+    {
+        std::cerr << "Container size:" << contSize << " is too big for img capacity: " << dataSize << std::endl; 
+        return;
+    }
+    
+    auto data = GetModelVertData(model);    
+    BitStream bs(data,BitStream::GetByteLevelBitDepths(bitDepth,4));
+    bs.WriteContainer(container);
+    model.meshes[0].vertices = (float*)MemAlloc(dataSize);
+    std::memcpy(model.meshes[0].vertices, bs.data.data(), dataSize);
+    UpdateMeshBuffer(model.meshes[0], 0, model.meshes[0].vertices, dataSize, 0);
+}
+
 void SecFile::LoadContainer()
 {
-    if (loadedTexture == nullptr && loadedWave==nullptr)return;
+    if (!HaveLoaded())return;
+    
     if (container != nullptr)
     {
         delete container;
@@ -131,6 +157,11 @@ void SecFile::LoadContainer()
     if (loadedWave != nullptr)
     {
         container = ReadContainerFromWave(*loadedWave, bitDepth);
+    }
+
+    if (loadedModel != nullptr)
+    {
+        container = ReadContainerFromModel(*loadedModel, bitDepth);
     }
     
     if (container == nullptr)
@@ -202,6 +233,17 @@ void SecFile::SaveLoaded()
         WriteContainerToWave(*container, wave, bitDepth);
         ExportWave(wave, ss.str().c_str());
         UnloadWave(wave);
+    }
+
+    if (loadedModel != nullptr)
+    {
+        std::stringstream ss;
+        ss << path.stem().string() << "_mod.obj";
+        
+        Model* model = CloneModel(*loadedModel);
+        WriteContainerToModel(*container, *model, bitDepth);
+        ExportMesh(model->meshes[0], ss.str().c_str());
+        UnloadModel(*model);
     }
 }
 

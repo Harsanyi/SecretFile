@@ -198,7 +198,8 @@ void SecFileUI::DrawPreviewAudio(Rectangle rect)
 void SecFileUI::DrawPreviewModel(Rectangle rect)
 {
     if (meshTexture  == nullptr)return;
-    
+
+    rect = FitSizeInto(meshTexture->texture.width, meshTexture->texture.height,rect);
     auto src = Rectangle{0,0,(float)meshTexture->texture.width, -(float)meshTexture->texture.height};
     DrawTexturePro(meshTexture->texture, src, rect, {0,0}, 0, WHITE);
 }
@@ -476,6 +477,12 @@ void SecFileUI::DrawSize()
     {
         long byteCount = ByteCount(*secFile->loadedWave);
         mediaSize = SecFile::GetSizeInBytes(byteCount, secFile->loadedWave->sampleSize, secFile->bitDepth);
+    }
+
+    if (secFile->loadedModel != nullptr)
+    {
+        long byteCount = ByteCount(*secFile->loadedModel);
+        mediaSize = SecFile::GetSizeInBytes(byteCount, 4, secFile->bitDepth);
     }
 
     long contentSize = contentSize = secFile->container == nullptr ? 0 : secFile->container->GetSize() + KEY.size();

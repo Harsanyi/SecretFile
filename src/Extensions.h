@@ -40,6 +40,11 @@ inline long ByteCount(const Wave& wave)
     return wave.frameCount * wave.channels * (wave.sampleSize / 8);
 }
 
+inline long ByteCount(const Model& model)
+{
+    return model.meshes[0].vertexCount * 3 * 4;
+}
+
 inline Model* CloneModel(const Model& model)
 {
     Model* clone = new Model();
@@ -49,7 +54,7 @@ inline Model* CloneModel(const Model& model)
     clone->materials = (Material*)MemAlloc(sizeof(Material) * model.materialCount);
     for (int m=0; m<model.materialCount; m++)
     {
-        clone->materials[0] = model.materials[m];
+        clone->materials[m] = model.materials[m];
     }
 
     clone->meshMaterial = (int*)MemAlloc(sizeof(int)*model.meshCount);
@@ -59,26 +64,41 @@ inline Model* CloneModel(const Model& model)
     clone->meshes = (Mesh*)MemAlloc(sizeof(Mesh) * model.meshCount);
     for (int m=0; m<model.meshCount; m++)
     {
-        Mesh& modelMesh = model.meshes[m];
-        Mesh& mesh = clone->meshes[m];
+        Mesh modelMesh = model.meshes[m];
+        Mesh mesh = {0};
 
         mesh.vertexCount = modelMesh.vertexCount;
         mesh.vertices = (float*)MemAlloc(sizeof(float)*3*modelMesh.vertexCount);
         memcpy(mesh.vertices, modelMesh.vertices, sizeof(float)*3*modelMesh.vertexCount);
 
-        mesh.normals = (float*)MemAlloc(sizeof(float)*3*modelMesh.vertexCount*3);
+        mesh.normals = (float*)MemAlloc(sizeof(float)*3*modelMesh.vertexCount);
         memcpy(mesh.normals, modelMesh.normals, sizeof(float)*3*modelMesh.vertexCount);
 
+        mesh.texcoords = (float*)MemAlloc(sizeof(float)*2*modelMesh.vertexCount);
+        memcpy(mesh.texcoords, modelMesh.texcoords, sizeof(float)*2*modelMesh.vertexCount);
+        
         mesh.triangleCount = modelMesh.triangleCount;
         if (mesh.indices != nullptr)
         {
-            mesh.indices = (unsigned short*)MemAlloc(sizeof(unsigned short)*modelMesh.triangleCount);
-            memcpy(mesh.indices, modelMesh.indices, sizeof(unsigned short)*modelMesh.triangleCount);
+            mesh.indices = (unsigned short*)MemAlloc(modelMesh.triangleCount*3);
+            memcpy(mesh.indices, modelMesh.indices, modelMesh.triangleCount*3);
+        }else
+        {
+            mesh.indices = nullptr;
         }
+
+        mesh.animNormals = nullptr;
+        mesh.animVertices = nullptr;
+        mesh.boneCount = 0;
+        mesh.boneMatrices = nullptr;
+        mesh.boneIds = nullptr;
+        mesh.colors = nullptr;
+        mesh.boneWeights = nullptr;
+        mesh.texcoords2 = nullptr;
 
         clone->meshes[m] = mesh;
         
-        UploadMesh(&mesh,false);
+        UploadMesh(&clone->meshes[m],false);
     }
     
     return clone;
