@@ -122,15 +122,9 @@ std::vector<uint8_t> BitStream::ReadData()
 
 void BitStream::WriteString(const std::string& str)
 {
-    uint64_t startPos = bitPosition;
-    std::cout << "Write string: " << str << std::endl;
     WriteUInt64(str.size());
     std::vector<uint8_t> bytes(str.begin(),str.end());
     WriteBytes(bytes);
-
-    bitPosition = startPos;
-    std::string read = ReadString();
-    std::cout << "read back:" << read << std::endl;
 }
 
 std::string BitStream::ReadString()
@@ -138,8 +132,6 @@ std::string BitStream::ReadString()
     uint64_t size = ReadUInt64();
     std::vector<uint8_t> bytes = ReadBytes(size);
     std::string result(bytes.begin(), bytes.end());
-    //std::string result = std::string(bytes.begin(),bytes.end());
-    std::cout << "Read string: " << result.c_str() << std::endl;
     return result;
 }
 

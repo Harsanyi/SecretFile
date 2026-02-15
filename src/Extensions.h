@@ -106,10 +106,10 @@ inline Model* CloneModel(const Model& model)
 
 inline std::vector<uint8_t> GetModelVertData(const Model& model)
 {
-    long size = model.meshes[0].vertexCount * 3 * 4;
+    long byteCount = model.meshes[0].vertexCount * 3 * 4;
     uint8_t* vertPtr = (uint8_t*)model.meshes[0].vertices;
-    std::vector<uint8_t> vertices(size);
-    memcpy(vertices.data(), vertPtr, size);
+    std::vector<uint8_t> vertices(byteCount);
+    memcpy(vertices.data(), vertPtr, byteCount);
     return vertices;
 }
 

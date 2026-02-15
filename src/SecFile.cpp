@@ -5,6 +5,7 @@
 #include "filesystem"
 #include "BitStream.h"
 #include "Extensions.h"
+#include "Obj.h"
 #include "Random.h"
 
 namespace fs = std::filesystem;
@@ -124,7 +125,7 @@ void SecFile::WriteContainerToWave(Container& container, Wave& wave, uint8_t bit
 
 void SecFile::WriteContainerToModel(Container& container, Model& model, uint8_t bitDepth)
 {
-    long dataSize = GetSizeInBytes(ByteCount(model), 4*8, bitDepth);
+    long dataSize = GetSizeInBytes(ByteCount(model), 4, bitDepth);
     long contSize = container.GetSize();
     if (contSize >= dataSize)
     {
@@ -135,9 +136,9 @@ void SecFile::WriteContainerToModel(Container& container, Model& model, uint8_t 
     auto data = GetModelVertData(model);    
     BitStream bs(data,BitStream::GetByteLevelBitDepths(bitDepth,4));
     bs.WriteContainer(container);
-    model.meshes[0].vertices = (float*)MemAlloc(dataSize);
-    std::memcpy(model.meshes[0].vertices, bs.data.data(), dataSize);
-    UpdateMeshBuffer(model.meshes[0], 0, model.meshes[0].vertices, dataSize, 0);
+    model.meshes[0].vertices = (float*)MemAlloc(data.size());
+    std::memcpy(model.meshes[0].vertices, bs.data.data(), data.size());
+    UpdateMeshBuffer(model.meshes[0], 0, model.meshes[0].vertices, data.size(), 0);
 }
 
 void SecFile::LoadContainer()
@@ -239,10 +240,43 @@ void SecFile::SaveLoaded()
     {
         std::stringstream ss;
         ss << path.stem().string() << "_mod.obj";
+
+        //TraceLog(LOG_INFO, "Begin model test.");
+        //{
+        //    Model* model = CloneModel(*loadedModel);
+        //    auto vertDataA = GetModelVertData(*model);
+        //    BitStream ws(vertDataA, BitStream::GetByteLevelBitDepths(bitDepth, 4));
+        //    std::string text = "Hello World!";
+        //    ws.WriteString(text);
+        //    SetModelVertData(*model,vertDataA);
+        //    //ExportMesh(model->meshes[0], "teszt.obj");
+        //    Obj::SaveToFile(*model, "teszt.obj");
+        //    UnloadModel(*model);
+//
+        //    model = new Model(LoadModel("teszt.obj"));
+        //    auto vertDataB = GetModelVertData(*model);
+        //    for (int v=0; v<vertDataA.size(); v++)
+        //    {
+        //        if (vertDataA[v] != vertDataB[v])TraceLog(LOG_ERROR, "Vertex data mismatch!");
+        //    }
+        //    TraceLog(LOG_WARNING, "Raw Vertex data match ended.");
+        //    BitStream rs(vertDataB, BitStream::GetByteLevelBitDepths(bitDepth, 4));
+        //    auto readedText = rs.ReadString();
+        //    if (text != readedText)
+        //    {
+        //        TraceLog(LOG_ERROR,"Back Readed text mismatch!");
+        //    }else
+        //    {
+        //        TraceLog(LOG_WARNING, "Readed text matches!");
+        //    }
+        //    UnloadModel(*model);
+        //}  
+        //TraceLog(LOG_INFO, "End model teszt.");
         
         Model* model = CloneModel(*loadedModel);
         WriteContainerToModel(*container, *model, bitDepth);
-        ExportMesh(model->meshes[0], ss.str().c_str());
+        Obj::SaveToFile(*model, ss.str());
+        //ExportMesh(model->meshes[0], ss.str().c_str());
         UnloadModel(*model);
     }
 }
