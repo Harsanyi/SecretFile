@@ -1,16 +1,11 @@
-﻿#include "FileData.h"
+#include "FileData.h"
+#include "Capacity.h"
+#include <utility>
 
-FileData::FileData(const std::string& fileName, const std::vector<uint8_t>& data)
-{
-    this->fileName = fileName;
-    this->data = data;
-}
+FileData::FileData(std::string name, std::vector<uint8_t> bytes)
+    : fileName(std::move(name)), data(std::move(bytes)) {}
 
-long FileData::GetSize()
+uint64_t FileData::GetSize() const
 {
-    long size = sizeof(uint64_t);
-    size += fileName.size();
-    size += sizeof(uint64_t);
-    size += data.size();
-    return size;
+    return CheckedAdd(16, CheckedAdd(fileName.size(), data.size()));
 }

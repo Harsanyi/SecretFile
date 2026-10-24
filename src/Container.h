@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 #include "FileData.h"
 
 class Container
 {
 public:
+    inline static constexpr char Magic[] = "CONTAINER";
     std::vector<FileData> files;
-
-    long GetSize();
+    uint64_t GetSize() const;
 };

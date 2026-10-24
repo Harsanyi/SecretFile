@@ -1,4 +1,5 @@
-﻿#pragma once
+#pragma once
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -6,11 +7,8 @@ class FileData
 {
 public:
     FileData() = default;
-    FileData(const std::string& fileName, const std::vector<uint8_t>& data);
-    ~FileData() = default;
-    
+    FileData(std::string fileName, std::vector<uint8_t> data);
     std::string fileName;
     std::vector<uint8_t> data;
-
-    long GetSize();
+    uint64_t GetSize() const;
 };

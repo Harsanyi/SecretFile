@@ -1,11 +1,9 @@
-﻿#include "Container.h"
+#include "Container.h"
+#include "Capacity.h"
 
-long Container::GetSize()
+uint64_t Container::GetSize() const
 {
-    long size = sizeof(uint64_t);
-    for (int f=0;f<files.size();f++)
-    {
-        size += files[f].GetSize();
-    }
+    uint64_t size = sizeof(Magic) - 1 + sizeof(uint64_t);
+    for (const auto& file : files) size = CheckedAdd(size, file.GetSize());
     return size;
 }
