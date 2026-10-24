@@ -2,6 +2,8 @@
 
 A C++ steganography / data-embedding experiment that stores multiple arbitrary files in the low-order bits of image pixels, audio samples and 3D vertex data. Built with raylib and raygui, it includes a bit-depth preview for exploring the trade-off between capacity and carrier distortion.
 
+**Windows x64:** [Download v1.3](https://github.com/Harsanyi/SecretFile/releases/tag/v1.3).
+
 ![SecretFile with an image carrier and two embedded files](docs/screenshot.png)
 
 *Actual application rendering with a procedurally generated image carrier, BitDepth 2 and two files in the container.*
