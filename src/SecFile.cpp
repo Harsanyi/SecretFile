@@ -1,354 +1,282 @@
-﻿#include "SecFile.h"
-
-#include <fstream>
-#include <iostream>
-#include "filesystem"
-#include "BitStream.h"
+#include "SecFile.h"
+#include "Capacity.h"
 #include "Extensions.h"
 #include "Obj.h"
-#include "Random.h"
+#include <algorithm>
+#include <cmath>
+#include <cctype>
+#include <cstring>
+#include <fstream>
+#include <limits>
+#include <memory>
+#include <stdexcept>
 
 namespace fs = std::filesystem;
 
-void SecFile::WriteDataToImage(Image& img, const std::vector<uint8_t>& data, uint8_t bitDepth)
+static void CheckLittleEndian()
 {
-    auto colors = ImageToByteVector(img);
-    BitStream bs(colors,BitStream::GetByteLevelBitDepths(bitDepth,1));
-    uint64_t size = data.size();
-    bs.WriteUInt64(size);
-    bs.WriteBytes(data);
-    std::memcpy(img.data, bs.data.data(), bs.data.size());
+    const uint16_t one = 1;
+    if (*reinterpret_cast<const uint8_t*>(&one) != 1)
+        throw std::runtime_error("Audio/model carriers currently require a little-endian host");
 }
 
-std::vector<uint8_t> SecFile::ReadDataFromImage(Image& img, uint8_t bitDepth)
+SecFile::~SecFile() { UnloadFiles(); ResetContainer(); }
+
+std::vector<uint8_t> SecFile::ImageToByteVector(Image& image)
 {
-    auto colors = ImageToByteVector(img);
-    BitStream bs(colors,BitStream::GetByteLevelBitDepths(bitDepth,1));
-    uint64_t size = bs.ReadUInt64();
-    return  bs.ReadBytes(size);
+    if (!image.data || image.width <= 0 || image.height <= 0) throw std::invalid_argument("Invalid image");
+    if (image.format != PIXELFORMAT_UNCOMPRESSED_R8G8B8A8)
+        ImageFormat(&image, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    if (!image.data) throw std::runtime_error("RGBA image conversion failed");
+    const auto* bytes = static_cast<const uint8_t*>(image.data);
+    return {bytes, bytes + static_cast<std::size_t>(ByteCount(image))};
 }
 
-std::vector<uint8_t> SecFile::ImageToByteVector(Image& img)
+void SecFile::NormalizeWave(Wave& wave)
 {
-    if (img.format != PIXELFORMAT_UNCOMPRESSED_R8G8B8A8)
+    CheckLittleEndian();
+    if (!wave.data || !wave.frameCount || !wave.sampleRate || !wave.channels)
+        throw std::invalid_argument("Invalid audio carrier");
+    if (wave.sampleSize != 16) WaveFormat(&wave, wave.sampleRate, 16, wave.channels);
+    if (!wave.data || wave.sampleSize != 16) throw std::runtime_error("16-bit PCM conversion failed");
+}
+
+Container* SecFile::ReadContainerFromTexture(const Texture2D& texture, uint8_t depth)
+{
+    Image image = LoadImageFromTexture(texture);
+    try
     {
-        ImageFormat(&img,PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+        auto* result = ReadContainerFromImage(image, depth);
+        UnloadImage(image);
+        return result;
     }
-    int byteCount = img.width * img.height * 4;
-    uint8_t* colors = static_cast<uint8_t*>(img.data);
-    return  std::vector<uint8_t>(colors, colors + byteCount);
+    catch (...) { UnloadImage(image); throw; }
 }
 
-long SecFile::GetSizeInBytes(uint64_t byteCount, uint8_t dataSize, uint8_t bitDepth)
+Container* SecFile::ReadContainerFromImage(Image& image, uint8_t depth)
 {
-    return byteCount * (bitDepth / (float)dataSize);
+    auto bytes = ImageToByteVector(image);
+    BitStream stream(bytes, BitStream::GetByteLevelBitDepths(depth, 1));
+    return stream.ReadContainer();
 }
 
-void SecFile::WriteDataToTexture(Texture2D& texture, const std::vector<uint8_t>& data, uint8_t bitDepth)
+Container* SecFile::ReadContainerFromWave(Wave& wave, uint8_t depth)
 {
-    Image img = LoadImageFromTexture(texture);
-    WriteDataToImage(img, data, bitDepth);
-    texture = LoadTextureFromImage(img);
-    UnloadImage(img);
+    NormalizeWave(wave);
+    const auto* begin = static_cast<const uint8_t*>(wave.data);
+    std::vector<uint8_t> bytes(begin, begin + static_cast<std::size_t>(ByteCount(wave)));
+    BitStream stream(bytes, BitStream::GetByteLevelBitDepths(depth, 2));
+    return stream.ReadContainer();
 }
 
-Container* SecFile::ReadContainerFromTexture(Texture2D& texture, uint8_t bitDepth)
+Container* SecFile::ReadContainerFromModel(const Model& model, uint8_t depth)
 {
-    Image img = LoadImageFromTexture(texture);
-    Container* cont = ReadContainerFromImage(img, bitDepth);
-    UnloadImage(img);
-    return cont;
+    CheckLittleEndian();
+    auto bytes = GetModelVertData(model);
+    BitStream stream(bytes, BitStream::GetByteLevelBitDepths(depth, 4));
+    return stream.ReadContainer();
 }
 
-Container* SecFile::ReadContainerFromImage(Image& img, uint8_t bitDepth)
+void SecFile::WriteContainerToImage(const Container& container, Image& image, uint8_t depth)
 {
-    std::vector<uint8_t> imgData = ImageToByteVector(img);
-    BitStream bs(imgData,BitStream::GetByteLevelBitDepths(bitDepth,1));
-    return bs.ReadContainer();
+    auto bytes = ImageToByteVector(image);
+    BitStream stream(bytes, BitStream::GetByteLevelBitDepths(depth, 1));
+    stream.WriteContainer(container);
+    std::memcpy(image.data, bytes.data(), bytes.size());
 }
 
-Container* SecFile::ReadContainerFromWave(Wave& wave, uint8_t bitDepth)
+void SecFile::WriteContainerToWave(const Container& container, Wave& wave, uint8_t depth)
 {
-    if (wave.channels > 1 || wave.sampleSize != 16)
+    NormalizeWave(wave);
+    const auto* begin = static_cast<const uint8_t*>(wave.data);
+    std::vector<uint8_t> bytes(begin, begin + static_cast<std::size_t>(ByteCount(wave)));
+    BitStream stream(bytes, BitStream::GetByteLevelBitDepths(depth, 2));
+    stream.WriteContainer(container);
+    std::memcpy(wave.data, bytes.data(), bytes.size());
+}
+
+void SecFile::WriteContainerToModel(const Container& container, Model& model, uint8_t depth)
+{
+    CheckLittleEndian();
+    if (model.meshCount > 0 && model.meshes[0].indices)
+        throw std::invalid_argument("Embed in triangle-expanded OBJ geometry loaded by raylib");
+    auto bytes = GetModelVertData(model);
+    BitStream stream(bytes, BitStream::GetByteLevelBitDepths(depth, 4));
+    stream.WriteContainer(container);
+    for (std::size_t offset = 0; offset < bytes.size(); offset += sizeof(float))
     {
-        WaveFormat(&wave, wave.sampleRate, 16, 1);
+        float value;
+        std::memcpy(&value, bytes.data() + offset, sizeof(float));
+        if (!std::isfinite(value)) throw std::runtime_error("Bit depth produced non-finite vertex coordinates; use a lower depth");
     }
-    
-    uint8_t* dataPtr = (uint8_t*)wave.data;
-    long size = wave.frameCount * (wave.sampleSize / 8);
-    std::vector<uint8_t> waveData(dataPtr, dataPtr + size);
-
-    BitStream bs(waveData, BitStream::GetByteLevelBitDepths(bitDepth,wave.sampleSize / 8));
-    return bs.ReadContainer();
+    SetModelVertData(model, bytes);
 }
 
-Container* SecFile::ReadContainerFromModel(Model& model, uint8_t bitDepth)
+uint64_t SecFile::CapacityBytes() const
 {
-    auto data = GetModelVertData(model);
-    BitStream bs(data, BitStream::GetByteLevelBitDepths(bitDepth,4));
-    return bs.ReadContainer();
-}
-
-void SecFile::WriteContainerToImage(Container& container, Image& img, uint8_t bitDepth)
-{
-    long imgSize = GetSizeInBytes(ByteCount(img), 8, bitDepth);
-    long contSize = container.GetSize();
-    if (contSize >= imgSize)
-    {
-        std::cerr << "Container size:" << contSize << " is too big for img capacity: " << imgSize << std::endl; 
-        return;
-    }
-    
-    std::vector<uint8_t> imgData = ImageToByteVector(img);
-    BitStream bs(imgData,BitStream::GetByteLevelBitDepths(bitDepth,1));
-    bs.WriteContainer(container);
-    std::memcpy(img.data, bs.data.data(), imgData.size());
-}
-
-void SecFile::WriteContainerToWave(Container& container, Wave& wave, uint8_t bitDepth)
-{
-    long waveSize = GetSizeInBytes(ByteCount(wave), wave.sampleSize, bitDepth);
-    long contSize = container.GetSize();
-    if (contSize >= waveSize)
-    {
-        std::cerr << "Container size:" << contSize << " is too big for img capacity: " << waveSize << std::endl; 
-        return;
-    }
-    
-    uint8_t* dataPtr = (uint8_t*)wave.data;
-    std::vector<uint8_t> waveData(dataPtr, dataPtr + waveSize);
-    
-    BitStream bs(waveData,BitStream::GetByteLevelBitDepths(bitDepth,2));
-    bs.WriteContainer(container);
-    std::memcpy(wave.data, bs.data.data(), waveSize);
-}
-
-void SecFile::WriteContainerToModel(Container& container, Model& model, uint8_t bitDepth)
-{
-    long dataSize = GetSizeInBytes(ByteCount(model), 4, bitDepth);
-    long contSize = container.GetSize();
-    if (contSize >= dataSize)
-    {
-        std::cerr << "Container size:" << contSize << " is too big for img capacity: " << dataSize << std::endl; 
-        return;
-    }
-    
-    auto data = GetModelVertData(model);    
-    BitStream bs(data,BitStream::GetByteLevelBitDepths(bitDepth,4));
-    bs.WriteContainer(container);
-    model.meshes[0].vertices = (float*)MemAlloc(data.size());
-    std::memcpy(model.meshes[0].vertices, bs.data.data(), data.size());
-    UpdateMeshBuffer(model.meshes[0], 0, model.meshes[0].vertices, data.size(), 0);
+    if (loadedTexture) return CarrierCapacityBytes(ByteCount(*loadedTexture), 1, bitDepth);
+    if (loadedWave) return CarrierCapacityBytes(CheckedMultiply(loadedWave->frameCount, loadedWave->channels), 2, bitDepth);
+    if (loadedModel) return CarrierCapacityBytes(ByteCount(*loadedModel) / sizeof(float), 4, bitDepth);
+    return 0;
 }
 
 void SecFile::LoadContainer()
 {
-    if (!HaveLoaded())return;
-    
-    if (container != nullptr)
-    {
-        delete container;
-    }
-
-    if (loadedTexture != nullptr)
-    {
-        container = ReadContainerFromTexture(*loadedTexture, bitDepth);
-    }
-
-    if (loadedWave != nullptr)
-    {
-        container = ReadContainerFromWave(*loadedWave, bitDepth);
-    }
-
-    if (loadedModel != nullptr)
-    {
-        container = ReadContainerFromModel(*loadedModel, bitDepth);
-    }
-    
-    if (container == nullptr)
-    {
-        container = new Container();
-    }
+    if (!HaveLoaded() || bitDepth == 0) throw std::runtime_error("Choose a nonzero bit depth before opening a container");
+    std::unique_ptr<Container> result;
+    if (loadedTexture) result.reset(ReadContainerFromTexture(*loadedTexture, bitDepth));
+    else if (loadedWave) result.reset(ReadContainerFromWave(*loadedWave, bitDepth));
+    else result.reset(ReadContainerFromModel(*loadedModel, bitDepth));
+    const bool found = bool(result);
+    if (!result) result = std::make_unique<Container>();
+    ResetContainer();
+    container = result.release();
+    status = found ? "Embedded container opened." : "No container found; new empty container created.";
 }
 
-void SecFile::AddFileFromPath(std::string path)
+void SecFile::AddFileFromPath(const std::string& path)
 {
-    std::cout << "Add file from path: " << path << std::endl;
-    
-    fs::path file(path);
-    std::string name = file.filename().string();
-
-    std::ifstream input(file, std::ios::binary);
-    if (!input.is_open())
-    {
-        std::cerr << "Failed to open file " << path << std::endl;
-        return;
-    }
-
-    input.seekg(0, std::ios::end);
-    std::streamsize size = input.tellg();
-    input.seekg(0, std::ios::beg);
-
-    std::vector<uint8_t> bytes(size);
-    if (!input.read(reinterpret_cast<char*>(bytes.data()), size))
-    {
-        std::cerr << "Failed to read file " << path << std::endl;
-        return;
-    }
-
-    input.close();
-
-    FileData fileData = FileData();
-    fileData.fileName = name;
-    fileData.data = bytes;
-
-    container->files.push_back(fileData);
-    std::cout << "File added:"<< fileData.fileName << std::endl;
-    std::cout << "Files:"<< container->files.size() << std::endl;
+    if (!container) throw std::runtime_error("Open a container first");
+    std::ifstream input(path, std::ios::binary | std::ios::ate);
+    if (!input) throw std::runtime_error("Cannot open payload file");
+    const auto end = input.tellg();
+    if (end < 0 || static_cast<uint64_t>(end) > std::vector<uint8_t>().max_size())
+        throw std::length_error("Invalid payload file length");
+    const auto name = fs::path(path).filename().string();
+    const auto serializedSize = CheckedAdd(16, CheckedAdd(name.size(), static_cast<uint64_t>(end)));
+    if (CheckedAdd(container->GetSize(), serializedSize) > CapacityBytes())
+        throw std::length_error("Payload plus container metadata exceeds carrier capacity");
+    std::vector<uint8_t> bytes(static_cast<std::size_t>(end));
+    input.seekg(0);
+    if (!bytes.empty() && !input.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size())))
+        throw std::runtime_error("Cannot read payload file");
+    container->files.emplace_back(name, std::move(bytes));
+    status = "Added: " + name;
 }
 
 void SecFile::SaveLoaded()
 {
-    std::cout << "Save File" << std::endl;
-
-    fs::path path(loadedFileName);
-    if (loadedTexture != nullptr)
+    if (!HaveLoaded() || !container || bitDepth == 0) throw std::runtime_error("Choose a carrier, container and nonzero bit depth before saving");
+    if (container->GetSize() > CapacityBytes()) throw std::length_error("Container plus metadata exceeds carrier capacity");
+    const auto extension = loadedTexture ? ".png" : loadedWave ? ".wav" : ".obj";
+    const auto output = loadedFilePath.parent_path() / (loadedFilePath.stem().string() + "_mod" + extension);
+    if (loadedTexture)
     {
-        std::stringstream ss;
-        ss << path.stem().string() << "_mod.png";
-        Image img = LoadImageFromTexture(*loadedTexture);
-        WriteContainerToImage(*container, img, bitDepth);
-        ExportImage(img, ss.str().c_str());
-        UnloadImage(img);
+        Image image = LoadImageFromTexture(*loadedTexture);
+        try
+        {
+            WriteContainerToImage(*container, image, bitDepth);
+            if (!ExportImage(image, output.string().c_str())) throw std::runtime_error("PNG export failed");
+        }
+        catch (...) { UnloadImage(image); throw; }
+        UnloadImage(image);
     }
-
-    if (loadedWave != nullptr)
+    else if (loadedWave)
     {
-        std::stringstream ss;
-        ss << path.stem().string() << "_mod.wav";
-
-        Wave wave = Wave(*loadedWave);
-        long dataSize = wave.frameCount * (wave.sampleSize / 8) * wave.channels;
-        wave.data = MemAlloc(dataSize);
-        memcpy(wave.data, loadedWave->data, dataSize);
-        WriteContainerToWave(*container, wave, bitDepth);
-        ExportWave(wave, ss.str().c_str());
+        Wave wave = WaveCopy(*loadedWave);
+        try
+        {
+            WriteContainerToWave(*container, wave, bitDepth);
+            if (!ExportWave(wave, output.string().c_str())) throw std::runtime_error("WAV export failed");
+        }
+        catch (...) { UnloadWave(wave); throw; }
         UnloadWave(wave);
     }
-
-    if (loadedModel != nullptr)
+    else
     {
-        std::stringstream ss;
-        ss << path.stem().string() << "_mod.obj";
-
-        //TraceLog(LOG_INFO, "Begin model test.");
-        //{
-        //    Model* model = CloneModel(*loadedModel);
-        //    auto vertDataA = GetModelVertData(*model);
-        //    BitStream ws(vertDataA, BitStream::GetByteLevelBitDepths(bitDepth, 4));
-        //    std::string text = "Hello World!";
-        //    ws.WriteString(text);
-        //    SetModelVertData(*model,vertDataA);
-        //    //ExportMesh(model->meshes[0], "teszt.obj");
-        //    Obj::SaveToFile(*model, "teszt.obj");
-        //    UnloadModel(*model);
-//
-        //    model = new Model(LoadModel("teszt.obj"));
-        //    auto vertDataB = GetModelVertData(*model);
-        //    for (int v=0; v<vertDataA.size(); v++)
-        //    {
-        //        if (vertDataA[v] != vertDataB[v])TraceLog(LOG_ERROR, "Vertex data mismatch!");
-        //    }
-        //    TraceLog(LOG_WARNING, "Raw Vertex data match ended.");
-        //    BitStream rs(vertDataB, BitStream::GetByteLevelBitDepths(bitDepth, 4));
-        //    auto readedText = rs.ReadString();
-        //    if (text != readedText)
-        //    {
-        //        TraceLog(LOG_ERROR,"Back Readed text mismatch!");
-        //    }else
-        //    {
-        //        TraceLog(LOG_WARNING, "Readed text matches!");
-        //    }
-        //    UnloadModel(*model);
-        //}  
-        //TraceLog(LOG_INFO, "End model teszt.");
-        
-        Model* model = CloneModel(*loadedModel);
+        OwnedModel model(CloneModel(*loadedModel));
         WriteContainerToModel(*container, *model, bitDepth);
-        Obj::SaveToFile(*model, ss.str());
-        //ExportMesh(model->meshes[0], ss.str().c_str());
-        UnloadModel(*model);
+        Obj::SaveToFile(*model, output.string());
     }
+    status = "Saved: " + output.string();
 }
 
-void SecFile::RemoveFileAt(const int index)
+void SecFile::RemoveFileAt(std::size_t index)
 {
+    if (!container || index >= container->files.size()) throw std::out_of_range("File index out of range");
     container->files.erase(container->files.begin() + index);
 }
 
-void SecFile::ExportFileAt(const int index)
+fs::path SecFile::SafeExportName(const std::string& name)
 {
-    if (index >= container->files.size())
-    {
-        std::cerr << "File index out of range" << std::endl;
-        return;
-    }
+    // Treat both separators as path separators, independent of the host OS.
+    std::string normalized = name;
+    std::replace(normalized.begin(), normalized.end(), '\\', '/');
+    const auto colon = normalized.find(':');
+    if (colon != std::string::npos && (colon != 1 || normalized.size() < 3 || normalized[2] != '/'))
+        throw std::runtime_error("Invalid drive-relative or stream filename");
+    const auto filename = fs::path(normalized).filename();
+    const auto text = filename.string();
+    if (text.empty() || text == "." || text == ".." || text.back() == '.' || text.back() == ' ' ||
+        text.find_first_of("<>:\"/\\|?*") != std::string::npos ||
+        std::any_of(text.begin(), text.end(), [](unsigned char c) { return c < 32; }))
+        throw std::runtime_error("Invalid embedded filename");
+    std::string stem = filename.stem().string();
+    std::transform(stem.begin(), stem.end(), stem.begin(), [](unsigned char c) { return char(std::toupper(c)); });
+    if (stem == "CON" || stem == "PRN" || stem == "AUX" || stem == "NUL" ||
+        (stem.size() == 4 && (stem.substr(0, 3) == "COM" || stem.substr(0, 3) == "LPT") && stem[3] >= '0' && stem[3] <= '9'))
+        throw std::runtime_error("Reserved embedded filename");
+    return filename;
+}
 
-    FileData file = container->files[index];
-    SaveFileData(file.fileName.c_str(), file.data.data(), file.data.size());
-    std::cout << "File saved:"<< file.fileName << std::endl;
+void SecFile::ExportFileAt(std::size_t index)
+{
+    if (!container || index >= container->files.size()) throw std::out_of_range("File index out of range");
+    const auto& file = container->files[index];
+    const auto directory = loadedFilePath.parent_path() / (loadedFilePath.stem().string() + "_extracted");
+    fs::create_directories(directory);
+    const auto output = directory / SafeExportName(file.fileName);
+    // Refuse links/overwrites, including dangling symlinks supplied beside the carrier.
+    if (fs::is_symlink(fs::symlink_status(directory)) || fs::symlink_status(output).type() != fs::file_type::not_found)
+        throw std::runtime_error("Extraction target already exists or is a link");
+    std::ofstream stream(output, std::ios::binary);
+    if (!stream || (file.data.size() && !stream.write(reinterpret_cast<const char*>(file.data.data()), static_cast<std::streamsize>(file.data.size()))))
+        throw std::runtime_error("Cannot export embedded file");
+    status = "Extracted: " + output.string();
 }
 
 void SecFile::UnloadFiles()
 {
-    if (loadedTexture != nullptr)UnloadTexture(*loadedTexture);
-    delete loadedTexture;
-    loadedTexture = nullptr;
-    
-    if (loadedWave != nullptr)UnloadWave(*loadedWave);
-    delete loadedWave;
-    loadedWave = nullptr;
+    if (loadedTexture) { UnloadTexture(*loadedTexture); delete loadedTexture; loadedTexture = nullptr; }
+    if (loadedWave) { UnloadWave(*loadedWave); delete loadedWave; loadedWave = nullptr; }
+    if (loadedModel) { UnloadOwnedModel(*loadedModel); delete loadedModel; loadedModel = nullptr; }
+    loadedFilePath.clear();
 }
 
 void SecFile::LoadImageFile(const std::string& path)
 {
-    UnloadFiles();
-    ResetContainer();
-    
-    loadedTexture = new Texture2D(LoadTexture(path.c_str()));
-    fs::path file(path);
-    loadedFileName = file.filename().string();
+    const auto fullPath = fs::absolute(path);
+    Texture2D texture = LoadTexture(fullPath.string().c_str());
+    if (!texture.id) throw std::runtime_error("Cannot load image carrier");
+    UnloadFiles(); ResetContainer();
+    loadedTexture = new Texture2D(texture);
+    loadedFilePath = fullPath;
+    bitDepth = std::min<uint8_t>(bitDepth, 8);
+    status = "Image loaded.";
 }
 
 void SecFile::LoadAudioFile(const std::string& path)
 {
-    UnloadFiles();
-    ResetContainer();
-    
-    loadedWave = new Wave(LoadWave(path.c_str()));
-    fs::path file(path);
-    loadedFileName = file.filename().string();
+    const auto fullPath = fs::absolute(path);
+    Wave wave = LoadWave(fullPath.string().c_str());
+    try { NormalizeWave(wave); } catch (...) { if (wave.data) UnloadWave(wave); throw; }
+    UnloadFiles(); ResetContainer();
+    loadedWave = new Wave(wave);
+    loadedFilePath = fullPath;
+    bitDepth = std::min<uint8_t>(bitDepth, 16);
+    status = "Audio loaded as 16-bit PCM; channels preserved.";
 }
 
 void SecFile::LoadModelFile(const std::string& path)
 {
-    UnloadFiles();
-    ResetContainer();
-    loadedModel = new Model(LoadModel(path.c_str()));
-    fs::path file(path);
-    loadedFileName = file.filename().string();
+    const auto fullPath = fs::absolute(path);
+    OwnedModel model(new Model(LoadModel(fullPath.string().c_str())));
+    ByteCount(*model);
+    UnloadFiles(); ResetContainer();
+    loadedModel = model.release();
+    loadedFilePath = fullPath;
+    status = "OBJ loaded; first mesh is the carrier.";
 }
 
-void SecFile::ResetContainer()
-{
-    if (container != nullptr)
-    {
-        delete container;
-        container = nullptr;
-    }
-}
-
-bool SecFile::HaveLoaded() const
-{
-    return loadedTexture != nullptr || loadedWave != nullptr || loadedModel != nullptr;
-}
+void SecFile::ResetContainer() { delete container; container = nullptr; }
+bool SecFile::HaveLoaded() const { return loadedTexture || loadedWave || loadedModel; }

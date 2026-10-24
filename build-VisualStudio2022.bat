@@ -1,3 +1,6 @@
-cd build
-premake5.exe vs2022 || pause
-cd ../
+@echo off
+setlocal
+set "CONFIG=%~1"
+if "%CONFIG%"=="" set "CONFIG=Debug"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0build.ps1" -Configuration "%CONFIG%"
+exit /b %errorlevel%

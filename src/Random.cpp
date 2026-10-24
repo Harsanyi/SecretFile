@@ -1,4 +1,4 @@
-﻿#include "Random.h"
+#include "Random.h"
 
 #include <cstring>
 #include <ctime>
@@ -8,7 +8,7 @@ uint32_t Random::state = 0;
 
 uint32_t Random::GetUint()
 {
-    if (state == 0)state = time(NULL);
+    if (state == 0)state = static_cast<uint32_t>(time(nullptr)) | 1u;
     Randomize();
     return state;
 }
@@ -22,7 +22,7 @@ uint32_t Random::GetUint(const int max)
 uint32_t Random::GetUint(const int min, const int max)
 {
     if (min >= max)return max;
-    
+
     int range = max - min;
     return GetUint(range)+min;
 }

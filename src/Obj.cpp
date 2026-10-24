@@ -1,60 +1,52 @@
-﻿#include "Obj.h"
-
+#include "Obj.h"
+#include <cmath>
 #include <fstream>
 #include <iomanip>
-#include <iostream>
+#include <limits>
+#include <locale>
+#include <stdexcept>
 
-void Obj::SaveToFile(Model& model, std::string filename)
+void Obj::SaveToFile(const Model& model, const std::string& filename)
 {
+    if (model.meshCount < 1 || !model.meshes || !model.meshes[0].vertices)
+        throw std::invalid_argument("OBJ requires a first mesh with vertex positions");
+    const Mesh& mesh = model.meshes[0];
+    for (int i = 0; i < mesh.vertexCount * 3; ++i)
+        if (!std::isfinite(mesh.vertices[i])) throw std::runtime_error("OBJ cannot preserve non-finite positions");
+    for (int i = 0; mesh.indices && i < mesh.triangleCount * 3; ++i)
+        if (mesh.indices[i] >= mesh.vertexCount) throw std::out_of_range("Invalid mesh vertex index");
+    if (!mesh.indices && mesh.triangleCount * 3 > mesh.vertexCount)
+        throw std::out_of_range("Invalid triangle-expanded mesh");
+
     std::ofstream file(filename);
-    if (!file.is_open())
-    {
-        TraceLog(LOG_ERROR, "Failed to open file %s for writing", filename.c_str());
-        return;
-    }
-
-    Mesh& mesh = model.meshes[0];
+    if (!file) throw std::runtime_error("Cannot open OBJ output");
+    file.imbue(std::locale::classic());
     file << std::setprecision(std::numeric_limits<float>::max_digits10);
-    
-    WriteVXList(file,"v", mesh.vertices, mesh.vertexCount, 3);
-    WriteVXList(file, "vn", mesh.normals, mesh.vertexCount, 3);
-
-    if (mesh.indices != nullptr)
+    for (int i = 0; i < mesh.vertexCount; ++i)
+        file << "v " << mesh.vertices[i * 3] << ' ' << mesh.vertices[i * 3 + 1] << ' ' << mesh.vertices[i * 3 + 2] << '\n';
+    if (mesh.normals)
+        for (int i = 0; i < mesh.vertexCount; ++i)
+            file << "vn " << mesh.normals[i * 3] << ' ' << mesh.normals[i * 3 + 1] << ' ' << mesh.normals[i * 3 + 2] << '\n';
+    if (mesh.texcoords)
+        for (int i = 0; i < mesh.vertexCount; ++i)
+            file << "vt " << mesh.texcoords[i * 2] << ' ' << mesh.texcoords[i * 2 + 1] << '\n';
+    for (int triangle = 0; triangle < mesh.triangleCount; ++triangle)
     {
-        std::cout << "Have indicies!\n";
-        for (int t=0; t<mesh.triangleCount; t++)
+        file << 'f';
+        for (int corner = 0; corner < 3; ++corner)
         {
-            int i=t*3;
-            file << "f ";
-            file << mesh.indices[i+1] << "//" << mesh.indices[i+1] << " ";
-            file << mesh.indices[i+1+1] << "//" << mesh.indices[i+1+1] << " ";
-            file << mesh.indices[i+2+1] << "//" << mesh.indices[i+2+1] << "\n";
+            const int offset = triangle * 3 + corner;
+            const unsigned index = (mesh.indices ? mesh.indices[offset] : offset) + 1u;
+            file << ' ' << index;
+            if (mesh.texcoords || mesh.normals)
+            {
+                file << '/';
+                if (mesh.texcoords) file << index;
+                if (mesh.normals) file << '/' << index;
+            }
         }
-    }else
-    {
-        std::cout << "There is no indicies!\n";
-        for (int v=0; v<mesh.vertexCount; v+=3)
-        {
-            file << "f ";
-            file << v+1 << "//" << v+1 << " ";
-            file << v+1+1 << "//" << v+1+1 << " ";
-            file << v+2+1 << "//" << v+2+1 << "\n";
-        }   
+        file << '\n';
     }
-    
     file.close();
-}
-
-void Obj::WriteVXList(std::ofstream& file, std::string prefix, float* vXValues, long vXCount, int x)
-{
-    for (int i=0; i < vXCount; i++)
-    {
-        int v = i*x;
-        file << prefix << " ";
-        for (int n=0; n < x; n++)
-        {
-            file << vXValues[v+n] << " ";
-        }
-        file << "\n";
-    }
+    if (!file) throw std::runtime_error("OBJ output could not be completed");
 }

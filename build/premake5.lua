@@ -1,3 +1,4 @@
+-- SecretFile build configuration, adapted from raylib-quickstart. See THIRD_PARTY_NOTICES.md.
 -- Export Compile Commands module for clangd support
 require "ecc/ecc"
 
@@ -52,17 +53,21 @@ end
 
 function check_raylib()
     os.chdir("external")
-    if(os.isdir("raylib-master") == false) then
-        if(not os.isfile("raylib-master.zip")) then
-            print("Raylib not found, downloading from github")
-            local result_str, response_code = http.download("https://github.com/raysan5/raylib/archive/refs/heads/master.zip", "raylib-master.zip", {
+    if(os.isdir("raylib-6.0") == false) then
+        if(not os.isfile("raylib-6.0.zip")) then
+            print("Downloading pinned raylib 6.0")
+            local result_str, response_code = http.download("https://github.com/raysan5/raylib/archive/refs/tags/6.0.zip", "raylib-6.0.zip", {
                 progress = download_progress,
                 headers = { "From: Premake", "Referer: Premake" }
             })
+            if response_code ~= 200 then
+                error("raylib download failed: " .. tostring(response_code) .. " " .. tostring(result_str))
+            end
         end
         print("Unzipping to " ..  os.getcwd())
-        zip.extract("raylib-master.zip", os.getcwd())
-        os.remove("raylib-master.zip")
+        zip.extract("raylib-6.0.zip", os.getcwd())
+        if not os.isfile("raylib-6.0/src/raylib.h") then error("raylib archive extraction failed") end
+        os.remove("raylib-6.0.zip")
     end
     os.chdir("../")
 end
@@ -117,7 +122,7 @@ end
 
 -- if you don't want to download raylib, then set this to false, and set the raylib dir to where you want raylib to be pulled from, must be full sources.
 downloadRaylib = true
-raylib_dir = "external/raylib-master"
+raylib_dir = "external/raylib-6.0"
 
 workspaceName = 'MyGame'
 baseName = path.getbasename(path.getdirectory(os.getcwd()));
@@ -136,6 +141,7 @@ end
 
 workspace (workspaceName)
     location "../"
+    staticruntime "On"
     configurations { "Debug", "Release"}
     platforms { "x64", "x86", "ARM64"}
 
@@ -244,6 +250,7 @@ if (downloadRaylib) then
 
     project "raylib"
         kind "StaticLib"
+        defines {"SUPPORT_FILEFORMAT_JPG=1"}
     
         platform_defines()
 
@@ -302,3 +309,39 @@ if (downloadRaylib) then
             compileas "Objective-C"
 
         filter{}
+
+-- Focused console tests: the bit/container core does not require raylib.
+function test_project(name, source, carriers)
+    project(name)
+        kind "ConsoleApp"
+        language "C++"
+        cppdialect "C++17"
+        location "build_files/"
+        targetdir "../bin/%{cfg.buildcfg}"
+        objdir "../obj/%{prj.name}/%{cfg.buildcfg}/%{cfg.platform}"
+        includedirs {"../src"}
+        files {source, "../src/BitStream.cpp", "../src/Container.cpp", "../src/FileData.cpp"}
+        if carriers then
+            includedirs {"../include", raylib_dir .. "/src"}
+            files {"../src/SecFile.cpp", "../src/SecFileUI.cpp", "../src/Obj.cpp", "../src/Random.cpp"}
+            links {"raylib"}
+            dependson {"raylib"}
+            libdirs {"../bin/%{cfg.buildcfg}"}
+            platform_defines()
+            filter "action:vs*"
+                links {"raylib.lib"}
+            filter "system:windows"
+                links {"winmm", "gdi32", "opengl32"}
+            filter "system:linux"
+                links {"pthread", "m", "dl", "rt", "X11"}
+            filter "system:macosx"
+                links {"OpenGL.framework", "Cocoa.framework", "IOKit.framework", "CoreFoundation.framework", "CoreAudio.framework", "CoreVideo.framework", "AudioToolbox.framework"}
+            filter {}
+        end
+        filter "action:vs*"
+            defines {"_CRT_SECURE_NO_WARNINGS"}
+        filter {}
+end
+
+test_project("CoreTests", "../tests/bitstream_tests.cpp", false)
+test_project("CarrierTests", "../tests/carrier_tests.cpp", true)

@@ -1,562 +1,344 @@
-﻿#pragma once
 #include "SecFileUI.h"
-
-#include <fstream>
-#include <iostream>
-#include <sstream>
-
 #include "Extensions.h"
 #include "Random.h"
 #include "raygui.h"
-#include "SecFile.h"
-#include "filesystem"
 #include "raymath.h"
-#include "rlgl.h"
+#include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <cstring>
+#include <iomanip>
+#include <memory>
+#include <sstream>
+#include <stdexcept>
 
-namespace fs = std::filesystem;
-
-SecFileUI::SecFileUI(SecFile* secFile, Vector2 screenSize)
+SecFileUI::SecFileUI(SecFile* file, Vector2 size) : secFile(file), screenSize(size)
 {
-    this->secFile = secFile;
-    this->screenSize = screenSize;
-
-    camera = Camera3D();
-    camera.position = Vector3(0, 1, -5);
-    camera.target = Vector3(0, 0, 0);
-    camera.up = Vector3(0, 1, 0);
+    camera.position = {0, 1, -5};
+    camera.target = {0, 0, 0};
+    camera.up = {0, 1, 0};
     camera.fovy = 45;
     camera.projection = CAMERA_PERSPECTIVE;
 }
 
+SecFileUI::~SecFileUI() { UnloadPreviews(); }
+
 void SecFileUI::Draw()
 {
-    DrawDropZone();
-    if (!secFile->HaveLoaded())return;
-    
-    DrawMenu();
-    if (secFile->container != nullptr)
+    try
     {
-        DrawContainer();   
+        if (IsFileDropped())
+        {
+            const auto dropped = LoadDroppedFiles();
+            try
+            {
+                const Rectangle panel{screenSize.x - padding - 300, padding, 300, screenSize.y - padding * 2};
+                for (unsigned i = 0; i < dropped.count; ++i)
+                {
+                    const std::string path = dropped.paths[i];
+                    if (secFile->container && CheckCollisionPointRec(GetMousePosition(), panel))
+                        secFile->AddFileFromPath(path);
+                    else
+                    {
+                        std::string extension = fs::path(path).extension().string();
+                        std::transform(extension.begin(), extension.end(), extension.begin(),
+                                       [](unsigned char c) { return char(std::tolower(c)); });
+                        if (extension != ".jpg" && extension != ".jpeg" && extension != ".png" &&
+                            extension != ".wav" && extension != ".obj")
+                            throw std::runtime_error("Supported carriers: .jpg, .jpeg, .png, .wav, .obj");
+                        UnloadPreviews();
+                        if (extension == ".wav") secFile->LoadAudioFile(path);
+                        else if (extension == ".obj") secFile->LoadModelFile(path);
+                        else secFile->LoadImageFile(path);
+                        UpdatePreview();
+                    }
+                }
+            }
+            catch (...) { UnloadDroppedFiles(dropped); throw; }
+            UnloadDroppedFiles(dropped);
+        }
+        DrawDropZone();
+        if (secFile->HaveLoaded())
+        {
+            DrawMenu();
+            if (secFile->container) DrawContainer();
+        }
     }
+    catch (const std::exception& error)
+    {
+        secFile->status = error.what();
+        TraceLog(LOG_WARNING, "%s", error.what());
+    }
+    if (font && !secFile->status.empty())
+        DrawTextEx(*font, secFile->status.c_str(), {padding, screenSize.y - 55}, 14, 1, LIGHTGRAY);
 }
 
 void SecFileUI::DrawDropZone()
 {
-    Rectangle rect {0,0, screenSize.x,screenSize.y};
-    if (secFile->container != nullptr)
+    Rectangle rect{padding, padding, screenSize.x - padding * 2, screenSize.y - 80};
+    if (secFile->container) rect.width -= 320;
+    if (!secFile->HaveLoaded())
     {
-        rect.width -= 320 + padding;
-        rect.x = padding;
+        DrawTextEx(*font, "Drop a carrier here", {screenSize.x / 2 - 180, screenSize.y / 2 - 60}, 32, 1, WHITE);
+        DrawTextEx(*font, ".jpg  .jpeg  .png  .wav  .obj", {screenSize.x / 2 - 180, screenSize.y / 2}, 20, 1, LIGHTGRAY);
     }
-
-    Vector2 center{screenSize.x/2.f, screenSize.y/2.f};
-    float extend = 50;
-    DrawTextEx(*font,"Drop file here! (.jpg, .png, .wav)",{center.x-200, center.y-100},32, 1, WHITE);
-        
-    Texture2D tex = *GetDropTexture();
-    Rectangle dest{center.x - extend, center.y - extend, extend*2, extend*2};
-    DrawTexturePro(tex, {0.f,0.f, (float)tex.width, (float)tex.height}, dest, {0.f,0.f}, 0.f, WHITE);
-    
-    std::string filePath;
-    if (IsFileDroppedInRect(rect, filePath))
-    {
-        std::cout << "Load file " << filePath << std::endl;
-
-        fs::path path(filePath);
-        std::string ext = path.extension().string();
-
-        if (ext == ".jpg" || ext == ".png" || ext == ".jpeg")
-        {
-            UnloadPreviews();
-            secFile->LoadImageFile(filePath);
-            UpdatePreview();
-        }else
-
-        if (ext == ".wav" || ext == ".mp3")
-        {
-            UnloadPreviews();
-            secFile->LoadAudioFile(filePath);
-            UpdatePreview();
-        }else
-        
-        if (ext == ".obj")
-        {
-            UnloadPreviews();
-            secFile->LoadModelFile(filePath);
-            UpdatePreview();
-        }
-
-        else
-        {
-            TraceLog(LOG_WARNING, "Unsupported file extension %s", ext.c_str());
-        }
-    }
-
-    if (previewTexture != nullptr)
-    {
-        DrawPreviewTexture(rect);
-    }
-
-    if (previewSound != nullptr)
-    {
-        DrawPreviewAudio(rect);
-    }
-
-    if (previewModel != nullptr)
-    {
-        DrawPreviewModel(rect);
-    }
+    if (previewTexture) DrawPreviewTexture(rect);
+    if (previewSound) DrawPreviewAudio(rect);
+    if (previewModel) DrawPreviewModel(rect);
 }
 
 void SecFileUI::DrawPreviewTexture(Rectangle rect)
 {
     rect = FitSizeInto(previewTexture->width, previewTexture->height, rect);
-    Rectangle source {0.f,0.f, (float)previewTexture->width, (float)previewTexture->height};
-    Texture2D tex = *previewTexture;
-    DrawTexturePro(tex, source, rect, {0.,0.}, 0., WHITE);
+    DrawTexturePro(*previewTexture, {0, 0, float(previewTexture->width), float(previewTexture->height)},
+                   rect, {0, 0}, 0, WHITE);
 }
 
 void SecFileUI::DrawPreviewAudio(Rectangle rect)
 {
-    Vector2 viewSize = {rect.width, 300};
-    Rectangle viewRect = FitSizeInto(viewSize.x, viewSize.y, rect);
+    const auto view = FitSizeInto(int(rect.width), 300, rect);
+    const int columns = std::max(1, int(view.width));
+    if (previewWaveData.size() != std::size_t(columns)) previewWaveData = ExtractSizedSamples(previewWave, columns);
+    const float middle = view.y + view.height / 2;
+    DrawRectangleRec(view, {54, 101, 107, 255});
+    DrawLine(int(view.x), int(middle), int(view.x + view.width), int(middle), {71, 112, 132, 255});
+    for (std::size_t i = 0; i < previewWaveData.size(); ++i)
+        DrawLine(int(view.x + i), int(middle), int(view.x + i),
+                 int(middle + view.height / 2 * previewWaveData[i]), {242, 78, 70, 255});
 
-    Color bgColor= {54,101,107, 255};
-    Color midLineColor {71,112, 132, 255};
-    Color waveColor {242,78,70,255};
-
-    float midHeight = viewRect.y + viewRect.height / 2;
-    DrawRectangle(viewRect.x, viewRect.y, viewRect.width, viewRect.height, bgColor);
-    DrawLine(viewRect.x, midHeight, viewRect.x + viewRect.width, midHeight, midLineColor);
-
-    if (previewWaveData.size() != viewRect.width)
+    const uint64_t duration = previewWave->sampleRate ? uint64_t(previewWave->frameCount) * 1000 / previewWave->sampleRate : 0;
+    if (isAudioPlaying && !IsSoundPlaying(*previewSound)) isAudioPlaying = false;
+    const uint64_t elapsed = isAudioPlaying ? std::min<uint64_t>(duration,
+        std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - audioStartPlaying).count()) : 0;
+    std::ostringstream text;
+    text << elapsed / 60000 << ':' << std::setw(2) << std::setfill('0') << elapsed / 1000 % 60
+         << " / " << duration / 60000 << ':' << std::setw(2) << duration / 1000 % 60;
+    DrawTextEx(*font, text.str().c_str(), {view.x + padding * 2 + 100, view.y + view.height - padding - 12}, 14, 1, WHITE);
+    if (isAudioPlaying && duration)
     {
-        previewWaveData = ExtractSizedSamples(previewWave, viewRect.width);
+        const float x = view.x + view.width * float(double(elapsed) / duration);
+        DrawLine(int(x), int(view.y), int(x), int(view.y + view.height), WHITE);
     }
-    
-    for (int i=0; i < previewWaveData.size(); i++)
+    if (!duration) GuiDisable();
+    if (GuiButton({view.x + padding, view.y + view.height - padding - 25, 100, 25}, isAudioPlaying ? "Stop" : "Play"))
     {
-        Vector2 start{viewRect.x + i, midHeight};
-        Vector2 end{start.x, midHeight + (viewRect.height / 2 * previewWaveData[i])};
-        DrawLine(start.x, start.y, end.x, end.y, waveColor);
+        if (isAudioPlaying) StopSound(*previewSound);
+        else { PlaySound(*previewSound); audioStartPlaying = clock::now(); }
+        isAudioPlaying = !isAudioPlaying;
     }
-
-    long duration = secFile->loadedWave->frameCount / secFile->loadedWave->sampleRate * 1000;
-    long elapsed = isAudioPlaying ? std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - audioStartPlaying).count() : 0;
-
-    std::stringstream timeText;
-    timeText << (elapsed / 60000) << ":" << std::setw(2) << std::setfill('0') << (elapsed / 1000 % 60);
-    timeText << " / ";
-    timeText << (duration / 60000) << ":" << std::setw(2) << std::setfill('0') << (duration / 1000 % 60);
-    DrawTextEx(
-        *font,
-        timeText.str().c_str(),
-        {viewRect.x + padding*2 + 100, viewRect.y + viewRect.height - padding - 12},
-        14,
-        1,
-        WHITE);
-
-    if (previewSound != nullptr && IsSoundPlaying(*previewSound))
-    {
-        int playPos = viewRect.width * (elapsed / (float)duration);
-        DrawLine(viewRect.x + playPos, viewRect.y, viewRect.x + playPos, viewRect.y + viewRect.height, WHITE);
-    }
-
-    Rectangle buttonRect {
-        viewRect.x + padding,
-    (viewRect.y + viewRect.height) - (padding + 25),
-    100,
-    25};
-
-    if (isAudioPlaying)
-    {
-        if (GuiButton(buttonRect,"Stop"))
-        {
-            isAudioPlaying = false;
-        }
-    }else
-    {
-        if (GuiButton(buttonRect,"Play"))
-        {
-            isAudioPlaying = true;
-        }
-    }
-
-    if (isAudioPlaying != IsSoundPlaying(*previewSound))
-    {
-        if (isAudioPlaying)
-        {
-            PlaySound(*previewSound);
-            audioStartPlaying = clock::now();
-        }else
-        {
-            StopSound(*previewSound);
-        }
-    }
+    GuiEnable();
 }
 
 void SecFileUI::DrawPreviewModel(Rectangle rect)
 {
-    if (meshTexture  == nullptr)return;
-
-    rect = FitSizeInto(meshTexture->texture.width, meshTexture->texture.height,rect);
-    auto src = Rectangle{0,0,(float)meshTexture->texture.width, -(float)meshTexture->texture.height};
-    DrawTexturePro(meshTexture->texture, src, rect, {0,0}, 0, WHITE);
+    if (!meshTexture) return;
+    rect = FitSizeInto(meshTexture->texture.width, meshTexture->texture.height, rect);
+    DrawTexturePro(meshTexture->texture, {0, 0, float(meshTexture->texture.width), -float(meshTexture->texture.height)},
+                   rect, {0, 0}, 0, WHITE);
 }
 
 void SecFileUI::UpdateModelTexture()
 {
-    if (meshTexture == nullptr)
-    {
-        meshTexture = new RenderTexture2D(LoadRenderTexture(1920, 1080));
-    }
-    
+    if (!previewModel) return;
+    if (!meshTexture) meshTexture = new RenderTexture2D(LoadRenderTexture(1920, 1080));
     BeginTextureMode(*meshTexture);
     ClearBackground(DARKGRAY);
     BeginMode3D(camera);
-
-    auto now = clock::now().time_since_epoch();
-    long ms = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
-    long rotTimeMs = 10000;
-    ms %= rotTimeMs;
-        
-    float rotation = (ms / (float)rotTimeMs)*360.;
-    DrawModelEx(*previewModel, {0,0,0},{0.,1.,0.}, rotation, {1.,1.,1.}, WHITE);
-    
+    const auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(clock::now().time_since_epoch()).count();
+    const float angle = float(milliseconds % 10000) / 10000 * 360;
+    DrawModelEx(*previewModel, {0, 0, 0}, {0, 1, 0}, angle, {1, 1, 1}, WHITE);
     EndMode3D();
     EndTextureMode();
 }
 
-Texture2D* SecFileUI::GetDropTexture()
-{
-    if (dropTexture == nullptr)
-    {
-        dropTexture = new Texture2D(LoadTexture("drop-icon.png"));
-    }
-    return dropTexture;
-}
-
-bool SecFileUI::IsFileDroppedInRect(const Rectangle& rect, std::string& path)
-{
-    if (IsFileDropped())
-    {
-        auto files = LoadDroppedFiles();
-        if (CheckCollisionPointRec(GetMousePosition(), rect))
-        {
-            path = std::string(files.paths[0]);
-            UnloadDroppedFiles(files);
-            return true;
-        }
-    }
-
-    return false;
-}
-
 void SecFileUI::DrawMenu()
 {
-    if (secFile->container == nullptr)
-    {
-        if (secFile->bitDepth < 1)
-        {
-            GuiDisable();
-            DrawOpenButton();
-            GuiEnable();
-        }else
-        {
-            DrawOpenButton();
-        }
-    }else
-    {
-        DrawSaveButton();
-    }
-        
+    if (secFile->bitDepth == 0) GuiDisable();
+    if (secFile->container) DrawSaveButton();
+    else DrawOpenButton();
+    GuiEnable();
     DrawBitSlider();
-    if (secFile->HaveLoaded())DrawSize();
+    DrawSize();
 }
 
 void SecFileUI::DrawBitSlider()
 {
-    Rectangle rect{padding + space + 150, screenSize.y - padding - 25, 150, 25};
-    std::string label = "BitDepth";
-
-    std::stringstream value;
-    int bitDepth = (int)secFile->bitDepth;
-    value << bitDepth;
-    float sliderVal = bitDepth;
-    float maxValue = -1;
-    if (secFile->loadedTexture != nullptr)
+    const int maximum = secFile->loadedTexture ? 8 : secFile->loadedWave ? 16 : 32;
+    float value = secFile->bitDepth;
+    const auto label = std::to_string(secFile->bitDepth);
+    GuiSlider({padding + space + 150, screenSize.y - padding - 25, 150, 25}, "BitDepth",
+              label.c_str(), &value, 0, float(maximum));
+    const auto selected = static_cast<uint8_t>(std::round(value));
+    if (selected != secFile->bitDepth)
     {
-        maxValue = 8.f;
-    }else if (secFile->loadedWave != nullptr)
-    {
-        maxValue = 16.f;
-    }else if (secFile->loadedModel != nullptr)
-    {
-        maxValue = 32.f;
-    }
-    else
-    {
-        throw new std::exception("Something should be loaded!");
-    }
-    GuiSlider(rect, label.c_str(), value.str().c_str(), &sliderVal, 0.f, maxValue);
-    if (bitDepth != std::round(sliderVal))
-    {
-        bitDepth = std::round(sliderVal);
-        secFile->bitDepth = bitDepth;
+        secFile->bitDepth = selected;
         UpdatePreview();
     }
 }
 
 void SecFileUI::UpdatePreview()
 {
-    std::cout << "Update Preview to "<< (int)secFile->bitDepth << std::endl;
-    
-    if (secFile->loadedTexture != nullptr)UpdateImagePreview();
-    if (secFile->loadedWave != nullptr)UpdateAudioPreview();
-    if (secFile->loadedModel != nullptr)UpdateModelPreview();
+    UnloadPreviews();
+    try
+    {
+        if (secFile->loadedTexture) UpdateImagePreview();
+        else if (secFile->loadedWave) UpdateAudioPreview();
+        else if (secFile->loadedModel) UpdateModelPreview();
+    }
+    catch (...) { UnloadPreviews(); throw; }
 }
 
 void SecFileUI::UpdateImagePreview()
 {
-    if (previewTexture != nullptr)UnloadTexture(*previewTexture);
-    Image img = LoadImageFromTexture(*secFile->loadedTexture);
-    if (secFile->bitDepth > 0)
+    Image image = LoadImageFromTexture(*secFile->loadedTexture);
+    try
     {
-        auto colors = SecFile::ImageToByteVector(img);
-        uint8_t mask = BitStream::GetMask(0, secFile->bitDepth - 1);
-        for (int c=0; c<colors.size(); c++)
+        auto bytes = SecFile::ImageToByteVector(image);
+        if (secFile->bitDepth)
         {
-            colors[c] &= ~mask;
-            colors[c] |= (Random::GetByte() & mask);
+            const auto mask = BitStream::GetMask(0, secFile->bitDepth - 1);
+            for (auto& byte : bytes) byte = uint8_t((byte & ~mask) | (Random::GetByte() & mask));
+            std::memcpy(image.data, bytes.data(), bytes.size());
         }
-        std::memcpy(img.data, colors.data(), colors.size());
+        previewTexture = new Texture2D(LoadTextureFromImage(image));
     }
-    
-    previewTexture = new Texture2D(LoadTextureFromImage(img));
-    UnloadImage(img);
+    catch (...) { UnloadImage(image); throw; }
+    UnloadImage(image);
 }
 
 void SecFileUI::UpdateAudioPreview()
 {
-    UnloadPreviews();
-    
-    previewWave = new Wave(*secFile->loadedWave);
-    long dataSize = previewWave->frameCount * previewWave->channels * (previewWave->sampleSize / 8);
-    previewWave->data = MemAlloc(dataSize);
-    memcpy(previewWave->data, secFile->loadedWave->data, dataSize);
-    
-    if (secFile->bitDepth == 0)
+    previewWave = new Wave(WaveCopy(*secFile->loadedWave));
+    if (secFile->bitDepth)
     {
-        previewSound = new Sound(LoadSoundFromWave(*secFile->loadedWave));
-        previewWaveData.clear();
-        return;
+        const auto pattern = BitStream::GetByteLevelBitDepths(secFile->bitDepth, 2);
+        auto* bytes = static_cast<uint8_t*>(previewWave->data);
+        for (uint64_t i = 0; i < ByteCount(*previewWave); ++i)
+        {
+            const auto depth = pattern[i % pattern.size()];
+            if (!depth) continue;
+            const auto mask = BitStream::GetMask(0, depth - 1);
+            bytes[i] = uint8_t((bytes[i] & ~mask) | (Random::GetByte() & mask));
+        }
     }
-    
-    if (previewWave->sampleSize != 16 || previewWave->channels != 1)
-    {
-        WaveFormat(previewWave, (int)previewWave->sampleRate, 16, 1);
-    }
-    
-    uint8_t* dataPtr = (uint8_t*)previewWave->data;
-    std::vector<uint8_t> data(dataPtr, dataPtr + previewWave->frameCount * 2);
-    auto bitDepths = BitStream::GetByteLevelBitDepths(secFile->bitDepth, 2);
-    for (int i = 0; i < data.size(); i++)
-    {
-        uint8_t mask = BitStream::GetMask(0, bitDepths[i%bitDepths.size()]-1);
-        data[i] &= ~mask;
-        data[i] |= (Random::GetByte() & mask);
-    }
-    std::memcpy(previewWave->data, data.data(), data.size());
-    
     previewSound = new Sound(LoadSoundFromWave(*previewWave));
-    previewWaveData.clear();
 }
 
 void SecFileUI::UpdateModelPreview()
 {
-    if (secFile->bitDepth < 1)
+    OwnedModel model(CloneModel(*secFile->loadedModel));
+    if (shader)
+        for (int i = 0; i < model->materialCount; ++i) model->materials[i].shader = *shader;
+    if (secFile->bitDepth)
     {
-        previewModel = secFile->loadedModel;
-        previewModel->materials[0].shader = *shader;
-        return;
+        auto bytes = GetModelVertData(*model);
+        const auto pattern = BitStream::GetByteLevelBitDepths(secFile->bitDepth, 4);
+        for (std::size_t i = 0; i < bytes.size(); ++i)
+        {
+            const auto depth = pattern[i % pattern.size()];
+            if (!depth) continue;
+            const auto mask = BitStream::GetMask(0, depth - 1);
+            bytes[i] = uint8_t((bytes[i] & ~mask) | (Random::GetByte() & mask));
+        }
+        // NaN/Inf cannot be displayed. Keep preview geometry finite at destructive depths.
+        for (std::size_t offset = 0; offset < bytes.size(); offset += sizeof(float))
+        {
+            float value;
+            std::memcpy(&value, bytes.data() + offset, sizeof(float));
+            if (!std::isfinite(value))
+            {
+                value = 0;
+                std::memcpy(bytes.data() + offset, &value, sizeof(float));
+            }
+        }
+        SetModelVertData(*model, bytes);
     }
-    
-    previewModel = CloneModel(*secFile->loadedModel);
-    previewModel->materials[0].shader = *shader;
-    
-    auto data = GetModelVertData(*previewModel);
-    
-    auto bitDepths = BitStream::GetByteLevelBitDepths(secFile->bitDepth, 4);
-    for (int d=0; d<data.size(); d++)
-    {
-        uint8_t mask = BitStream::GetMask(0, bitDepths[d%bitDepths.size()]-1);
-        data[d] &= ~mask;
-        data[d] |= (Random::GetByte() & mask);
-    }
-    
-    SetModelVertData(*previewModel, data);
+    previewModel = model.release();
 }
 
 void SecFileUI::DrawOpenButton()
 {
-    Rectangle rect{padding, screenSize.y - padding - 25, 100, 25};
-    if (GuiButton(rect,"Open") == 1)
-    {
-        std::cout << "Open" << std::endl;
-        if (secFile->bitDepth > 0)
-        {
-            secFile->LoadContainer();
-        }
-    }
+    if (GuiButton({padding, screenSize.y - padding - 25, 100, 25}, "Open")) secFile->LoadContainer();
 }
 
 void SecFileUI::DrawSaveButton()
 {
-    Rectangle rect{padding, screenSize.y - padding - 25, 100, 25};
-    if (GuiButton(rect,"Save") == 1)
-    {
-        std::cout << "Save" << std::endl;
-        secFile->SaveLoaded();
-    }
+    if (GuiButton({padding, screenSize.y - padding - 25, 100, 25}, "Save")) secFile->SaveLoaded();
 }
 
 void SecFileUI::DrawContainer()
 {
-    Vector2 size {300,screenSize.y - padding*2};
-    Rectangle rect{screenSize.x - padding - size.x, screenSize.y - padding - size.y, size.x, size.y};
-    DrawRectangle(rect.x, rect.y, rect.width, rect.height, DARKBROWN);
-
-    if (secFile->container == nullptr)return;
-
-    std::string path;
-    if (IsFileDroppedInRect(rect, path))
+    const Rectangle panel{screenSize.x - padding - 300, padding, 300, screenSize.y - padding * 2};
+    DrawRectangleRec(panel, DARKBROWN);
+    DrawTextEx(*font, "Embedded files", {panel.x + padding, panel.y + padding}, 18, 1, WHITE);
+    DrawTextEx(*font, "Drop files into this panel", {panel.x + padding, panel.y + 36}, 14, 1, LIGHTGRAY);
+    const auto& files = secFile->container->files;
+    const auto rows = std::size_t(std::max(1, int((panel.height - 65) / 32)));
+    const auto lastStart = files.size() > rows ? files.size() - rows : 0;
+    if (CheckCollisionPointRec(GetMousePosition(), panel))
     {
-       secFile->AddFileFromPath(path);
+        const int wheel = int(GetMouseWheelMove());
+        if (wheel < 0) firstVisibleFile = std::min(lastStart, firstVisibleFile + std::size_t(-wheel));
+        else firstVisibleFile -= std::min(firstVisibleFile, std::size_t(wheel));
     }
-
-    auto files = secFile->container->files;
-    for (int f=0; f<files.size(); f++)
+    firstVisibleFile = std::min(firstVisibleFile, lastStart);
+    for (std::size_t i = firstVisibleFile; i < files.size(); ++i)
     {
-        //text
-        Vector2 size{150,25};
-        Vector2 pos {rect.x + padding, rect.y + padding + f*size.y + (f > 0 ? (f-1)*space : 0)};
-        DrawTextEx(*font,files[f].fileName.c_str(), {pos.x, pos.y}, 14, 1, WHITE);
-
-        //del
-        Rectangle delRect{rect.x + 200, pos.y, 40, 25};
-        if (GuiButton(delRect, "Del")==1)
+        const float y = panel.y + 65 + float(i - firstVisibleFile) * 32;
+        if (y + 25 > panel.y + panel.height) break;
+        const auto name = files[i].fileName.size() > 20 ? files[i].fileName.substr(0, 17) + "..." : files[i].fileName;
+        DrawTextEx(*font, name.c_str(), {panel.x + padding, y + 5}, 14, 1, WHITE);
+        if (GuiButton({panel.x + 200, y, 40, 25}, "Del"))
         {
-            secFile->RemoveFileAt(f);
-            return;
+            secFile->RemoveFileAt(i);
+            break;
         }
-
-        //Save
-        Rectangle saveRect{delRect.x + delRect.width + space, delRect.y, 40, 25};
-        if (GuiButton(saveRect, "Exp") == 1)
-        {
-            secFile->ExportFileAt(f);
-        }
+        if (GuiButton({panel.x + 245, y, 40, 25}, "Exp")) secFile->ExportFileAt(i);
     }
 }
 
 void SecFileUI::DrawSize()
 {
-    if (!secFile->HaveLoaded())return;
-    
-    Vector2 pos = {padding + 400, screenSize.y - padding - 20};
-
-    long mediaSize = 0;
-
-    if (secFile->loadedTexture != nullptr)
-    {
-        long byteCount = ByteCount(*secFile->loadedTexture);
-        mediaSize = SecFile::GetSizeInBytes(byteCount, 8, secFile->bitDepth);
-    }
-
-    if (secFile->loadedWave != nullptr)
-    {
-        long byteCount = ByteCount(*secFile->loadedWave);
-        mediaSize = SecFile::GetSizeInBytes(byteCount, secFile->loadedWave->sampleSize, secFile->bitDepth);
-    }
-
-    if (secFile->loadedModel != nullptr)
-    {
-        long byteCount = ByteCount(*secFile->loadedModel);
-        mediaSize = SecFile::GetSizeInBytes(byteCount, 4, secFile->bitDepth);
-    }
-
-    long contentSize = contentSize = secFile->container == nullptr ? 0 : secFile->container->GetSize() + KEY.size();
-    
-    std::stringstream ss;
-    ss << contentSize << "/" << mediaSize;
-    DrawTextEx(*font, ss.str().c_str(), {pos.x, pos.y}, 14, 1, contentSize > mediaSize ? RED : GREEN);
+    const auto capacity = secFile->CapacityBytes();
+    const auto used = secFile->container ? secFile->container->GetSize() : 0;
+    const auto text = std::to_string(used) + " / " + std::to_string(capacity) + " bytes";
+    DrawTextEx(*font, text.c_str(), {padding + 400, screenSize.y - padding - 20}, 14, 1, used > capacity ? RED : GREEN);
 }
 
-void SecFileUI::SetFont(Font* font)
+void SecFileUI::SetFont(Font* value) { font = value; }
+void SecFileUI::SetShader(Shader* value) { shader = value; }
+
+std::vector<float> SecFileUI::ExtractSizedSamples(const Wave* wave, int sampleCount)
 {
-    this->font = font;
-}
-
-void SecFileUI::SetShader(Shader* shader)
-{
-    this->shader = shader;
-}
-
-std::vector<float> SecFileUI::ExtractSizedSamples(Wave* wave, const int sampleCount)
-{
-    if (wave->channels != 1 || wave->sampleSize != 16)
+    if (sampleCount <= 0) return {};
+    std::vector<float> results(static_cast<std::size_t>(sampleCount), 0);
+    if (!wave || !wave->data || !wave->frameCount || !wave->channels) return results;
+    std::unique_ptr<float, decltype(&UnloadWaveSamples)> samples(LoadWaveSamples(*wave), UnloadWaveSamples);
+    if (!samples) return results;
+    float highest = 0;
+    for (std::size_t i = 0; i < results.size(); ++i)
     {
-        WaveFormat(wave, wave->sampleRate, 16, 1);
+        const auto start = uint64_t(i) * wave->frameCount / results.size();
+        const auto end = std::min<uint64_t>(wave->frameCount,
+            std::max(start + 1, uint64_t(i + 1) * wave->frameCount / results.size()));
+        double sum = 0;
+        for (auto frame = start; frame < end; ++frame)
+            for (unsigned channel = 0; channel < wave->channels; ++channel)
+                sum += samples.get()[frame * wave->channels + channel];
+        results[i] = float(sum / double((end - start) * wave->channels));
+        highest = std::max(highest, std::abs(results[i]));
     }
-
-    int16_t* data = (int16_t*)wave->data;
-    std::vector<int16_t> samples(data, data + wave->frameCount);
-    std::vector<float> results(sampleCount);
-    int step = samples.size()/results.size();
-
-    for (int i=0; i<results.size(); i++)
-    {
-        int start = i*step;
-        int end = std::min(start+step, (int)samples.size());
-        int range = end - start;
-        int avg = 0;
-        for (int s=start; s<end; s++)
-        {
-            avg += samples[s] / range;
-        }
-        results[i] = (float)avg / std::numeric_limits<int16_t>::max();
-    }
-
-    float highest = 0.f;
-    for (auto v : results)
-    {
-        if (std::abs(v) > highest)highest = std::abs(v);
-    }
-
-    for (int i=0; i<results.size(); i++)
-    {
-        results[i] /= highest;
-    }
-
+    if (highest > 0) for (auto& result : results) result /= highest;
     return results;
 }
 
 void SecFileUI::UnloadPreviews()
 {
-    if (previewTexture != nullptr)UnloadTexture(*previewTexture);
-    delete previewTexture;
-    previewTexture = nullptr;
-
-    isAudioPlaying = false;
-    if (previewSound != nullptr)
-    {
-        if (IsSoundPlaying(*previewSound))StopSound(*previewSound);
-        UnloadSound(*previewSound);
-        delete previewSound;
-        previewSound = nullptr;
-    }
+    if (previewTexture) { UnloadTexture(*previewTexture); delete previewTexture; previewTexture = nullptr; }
+    if (previewSound) { StopSound(*previewSound); UnloadSound(*previewSound); delete previewSound; previewSound = nullptr; }
+    if (previewWave) { UnloadWave(*previewWave); delete previewWave; previewWave = nullptr; }
+    if (previewModel) { UnloadOwnedModel(*previewModel); delete previewModel; previewModel = nullptr; }
+    if (meshTexture) { UnloadRenderTexture(*meshTexture); delete meshTexture; meshTexture = nullptr; }
     previewWaveData.clear();
-
-    if (previewWave != nullptr)UnloadWave(*previewWave);
-    previewWave = nullptr;
+    isAudioPlaying = false;
 }

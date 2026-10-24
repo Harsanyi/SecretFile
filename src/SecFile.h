@@ -1,46 +1,43 @@
-﻿#pragma once
+#pragma once
+#include <filesystem>
+#include <string>
 #include <vector>
-
 #include "BitStream.h"
 #include "raylib.h"
 
 class SecFile
 {
 public:
-    const int SCREEN_WIDTH = 1280;
-    const int SCREEN_HEIGHT = 720;
-    
-    static void WriteDataToImage(Image& img, const std::vector<uint8_t>& data, uint8_t bitDepth);
-    static std::vector<uint8_t> ReadDataFromImage(Image& img, uint8_t bitDepth);
-    static std::vector<uint8_t> ImageToByteVector(Image& img);
-    static long GetSizeInBytes(uint64_t byteCount, uint8_t dataSize, uint8_t bitDepth);
-    static void WriteDataToTexture(Texture2D& texture, const std::vector<uint8_t>& data, uint8_t bitDepth);
-    static Container* ReadContainerFromTexture(Texture2D& texture, uint8_t bitDepth);
-    static Container* ReadContainerFromImage(Image& img, uint8_t bitDepth);
+    static std::vector<uint8_t> ImageToByteVector(Image& image);
+    static void NormalizeWave(Wave& wave);
+    static Container* ReadContainerFromTexture(const Texture2D& texture, uint8_t bitDepth);
+    static Container* ReadContainerFromImage(Image& image, uint8_t bitDepth);
     static Container* ReadContainerFromWave(Wave& wave, uint8_t bitDepth);
-    static Container* ReadContainerFromModel(Model& model, uint8_t bitDepth);
-    static void WriteContainerToImage(Container& container, Image& img, uint8_t bitDepth);
-    static void WriteContainerToWave(Container& container, Wave& wave, uint8_t bitDepth);
-    static void WriteContainerToModel(Container& container, Model& model, uint8_t bitDepth);
+    static Container* ReadContainerFromModel(const Model& model, uint8_t bitDepth);
+    static void WriteContainerToImage(const Container& container, Image& image, uint8_t bitDepth);
+    static void WriteContainerToWave(const Container& container, Wave& wave, uint8_t bitDepth);
+    static void WriteContainerToModel(const Container& container, Model& model, uint8_t bitDepth);
 
     Texture2D* loadedTexture = nullptr;
     Wave* loadedWave = nullptr;
     Model* loadedModel = nullptr;
-    
-    std::string loadedFileName;
+    std::filesystem::path loadedFilePath;
+    std::string status;
     uint8_t bitDepth = 1;
     Container* container = nullptr;
 
+    ~SecFile();
     void LoadContainer();
-    void AddFileFromPath(std::string path);
+    void AddFileFromPath(const std::string& path);
     void SaveLoaded();
-    void RemoveFileAt(const int index);
-    void ExportFileAt(const int index);
+    void RemoveFileAt(std::size_t index);
+    void ExportFileAt(std::size_t index);
+    static std::filesystem::path SafeExportName(const std::string& name);
     void UnloadFiles();
     void LoadImageFile(const std::string& path);
     void LoadAudioFile(const std::string& path);
     void LoadModelFile(const std::string& path);
     void ResetContainer();
-
     bool HaveLoaded() const;
+    uint64_t CapacityBytes() const;
 };
