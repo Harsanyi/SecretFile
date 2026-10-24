@@ -405,3 +405,10 @@ Makefile
 *.swp
 *.swo
 *.swn
+.idea/
+/build/external/
+/obj/
+/tests/output/
+/dist/
+/compile_commands.json
+/build/compile_commands.json
