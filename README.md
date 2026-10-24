@@ -1,168 +1,112 @@
-# Raylib-Quickstart
-A simple cross platform template for setting up a project with the bleeding edge raylib code.
-Works with C or C++.
+# SecretFile
 
-# Basic Setup
-Download this repository to get started.
+A C++ steganography / data-embedding experiment that stores multiple arbitrary files in the low-order bits of image pixels, audio samples and 3D vertex data. Built with raylib and raygui, it includes a bit-depth preview for exploring the trade-off between capacity and carrier distortion.
 
-You can download the zip file of the repository from the Green Code button on github. This is the simplest way to get the template to start from.
-Once you have downloaded the template, rename it to your project name.
+![SecretFile with an image carrier and two embedded files](docs/screenshot.png)
 
-or
+*Actual application rendering with a procedurally generated image carrier, BitDepth 2 and two files in the container.*
 
-Clone the repository with git, form the url
-```
-https://github.com/raylib-extras/raylib-quickstart.git
-```
+## What it does
 
-If you are using a command line git client you can use the command below to download and rename the template in one step
-```
-git clone https://github.com/raylib-extras/raylib-quickstart.git [name-for-your-project-here]
-```
+Load a carrier, choose how many low-order bits to use, preview the changes, then open or create a container. Drop files into the right-hand panel and save a modified carrier. Reopen that output at the same bit depth to recover and export its files.
 
-# Naming projects
-* Replace the placeholder with your desired project name when running the git clone command above.
-* __Do not name your game project 'raylib', it will conflict with the raylib library.__
-* If you have used custom game name with __git clone__, there is no need to rename it again.
+This is a personal R&D experiment in binary representation and serialization. **It is not encryption and provides no cryptographic protection for sensitive data.**
 
+## Carrier experiments
 
-## Supported Platforms
-Quickstart supports the main 3 desktop platforms:
-* Windows
-* Linux
-* MacOS
+| Carrier | Verified input | Output | Storage units and limits |
+| --- | --- | --- | --- |
+| Image | PNG, JPG, JPEG | `<name>_mod.png` | Image converted to RGBA; low bits of each channel byte, depth 1–8 |
+| Audio | WAV, mono/stereo; 8/16/32-bit input fixtures | `<name>_mod.wav` | Decoded/converted to 16-bit PCM, preserving channel count and sample rate; depth 1–16 |
+| 3D model | OBJ | `<name>_mod.obj` | Low bits of IEEE-754 vertex-position floats; **first mesh only**, including export |
 
-# VSCode Users (all platforms)
-*Note* You must have a compiler toolchain installed in addition to vscode.
+PNG and WAV outputs avoid lossy re-encoding. MP3 is not offered in the UI because its input path has not been validated. Audio format preservation is limited to the normalized 16-bit representation.
 
-1. Download the quickstart
-2. Rename the folder to your game name
-3. Open the folder in VSCode
-4. Run the build task ( CTRL+SHIFT+B or F5 )
-5. You are good to go
+## How it works
 
-# Windows Users
-There are two compiler toolchains available for windows, MinGW-W64 (a free compiler using GCC), and Microsoft Visual Studio
-## Using MinGW-W64
-* Rename the folder to your game name
-* Double click the `build-MinGW-W64.bat` file
-* CD into the folder in your terminal
-  * if you are using the W64devkit and have not added it to your system path environment variable, you must use the W64devkit.exe terminal, not CMD.exe
-  * If you want to use cmd.exe or any other terminal, please make sure that gcc/mingw-W64 is in your path environment variable.
-* run `make`
-* You are good to go
+With one payload bit per byte, only the least significant bit changes:
 
-### Note on MinGW-64 versions
-Make sure you have a modern version of MinGW-W64 (not mingw).
-The best place to get it is from the W64devkit from
-https://github.com/skeeto/w64devkit/releases
-
-or the version installed with the raylib installer
-
-#### If you have installed raylib from the installer
-Make sure you have added the path
-
-`C:\raylib\w64devkit\bin`
-
-To your path environment variable so that the compiler that came with raylib can be found.
-
-DO NOT INSTALL ANOTHER MinGW-W64 from another source such as msys2, you don't need it.
-
-## Microsoft Visual Studio
-* Rename the folder to your game name
-* Run `build-VisualStudio2022.bat`
-* double click the `.sln` file that is generated
-* develop your game
-* you are good to go
-
-# Linux Users
-* Rename the folder to your game name
-* CD into the build folder
-* run `./premake5 gmake`
-* CD back to the root
-* run `make`
-* you are good to go
-
-# MacOS Users
-* Rename the folder to your game name
-* CD into the build folder
-* run `./premake5.osx gmake`
-* CD back to the root
-* run `make`
-* you are good to go
-
-# Output files
-The built code will be in the bin dir
-
-# Working directories and the resources folder
-The example uses a utility function from `path_utils.h` that will find the resources dir and set it as the current working directory. This is very useful when starting out. If you wish to manage your own working directory you can simply remove the call to the function and the header.
-
-# Changing to C++
-Simply rename `src/main.c` to `src/main.cpp` and re-run the steps above and do a clean build.
-
-# Using your own code
-Simply remove `src/main.c` and replace it with your code, and re-run the steps above and do a clean build.
-
-# Building for other OpenGL targets
-If you need to build for a different OpenGL version than the default (OpenGL 3.3) you can specify an OpenGL version in your premake command line. Just modify the bat file or add the following to your command line
-
-## For OpenGL 1.1
-`--graphics=opengl11`
-
-## For OpenGL 2.1
-`--graphics=opengl21`
-
-## For OpenGL 4.3
-`--graphics=opengl43`
-
-## For OpenGLES 2.0
-`--graphics=opengles2`
-
-## For OpenGLES 3.0
-`--graphics=opengles3`
-
-# Adding External Libraries 
-
-Quickstart is intentionally minimal — it only includes what is required to compile and run a basic raylib project.  
-If you want to use extra libraries, you can add them to the `build/premake5.lua` file yourself using the links function.
-
-You can find the documentation for the links function here https://premake.github.io/docs/links/
-
-### Example: adding the required libraries for tinyfiledialogs on Windows
-tinyfiledialogs requires extra Windows system libraries.
-The premake file uses filters to define options that are platform specific
-https://premake.github.io/docs/Filters/
-
-Using the windows filter adds these libraries only to the windows build.
-```
-filter "system:windows"
-    links {
-        "Comdlg32",
-        "User32",
-        "Ole32",
-        "Shell32"
-    }
+```text
+Original byte:  11010110
+Payload slot:   1101011X
 ```
 
-### Cross-platform reminder
-If you add a library, make sure to add its required dependencies for all platforms you plan to support (Windows, Linux, MacOS).
-Different libraries will have different dependencies on different platforms.
+For a carrier with `N` elements and `B` available bits per element:
 
+```text
+capacityBytes = floor(N × B / 8)
+```
 
-# License
-Copyright (c) 2020-2025 Jeffery Myers
+An image element is one channel byte; an audio element is one 16-bit sample, including each channel; a model element is one 32-bit float component. A 12-bit audio setting, for example, uses a repeating `[8, 4]` byte-depth pattern. `BitStream` traverses those physical byte slots, skipping zero-depth bytes and preserving all other bits.
 
-This software is provided "as-is", without any express or implied warranty. In no event 
-will the authors be held liable for any damages arising from the use of this software.
+Bounds checks reject oversized writes and lengths/counts that exceed remaining carrier storage before allocating payload buffers. A container that exactly fills the available capacity is valid.
 
-Permission is granted to anyone to use this software for any purpose, including commercial 
-applications, and to alter it and redistribute it freely, subject to the following restrictions:
+## Custom multi-file container
 
-  1. The origin of this software must not be misrepresented; you must not claim that you 
-  wrote the original software. If you use this software in a product, an acknowledgment 
-  in the product documentation would be appreciated but is not required.
+All integers are unsigned 64-bit values, serialized **little-endian**. Strings and file data are byte sequences; no compression or encryption is applied.
 
-  2. Altered source versions must be plainly marked as such, and must not be misrepresented
-  as being the original software.
+| Field | Encoding |
+| --- | --- |
+| Marker | 9 literal bytes: `CONTAINER` |
+| File count | 8 bytes |
+| Each file's filename length | 8 bytes |
+| Filename | The stated number of bytes |
+| Data length | 8 bytes |
+| File contents | The stated number of bytes |
 
-  3. This notice may not be removed or altered from any source distribution.
+Total size is `17 + sum(16 + filenameBytes + dataBytes)`. The capacity display and write checks include the marker and every metadata field. The marker identifies the format; it does not authenticate the data or detect all corruption.
+
+## Bit-depth preview
+
+The slider fills the selected low-order bits with pseudorandom preview values. This shows image degradation, audio/waveform changes or geometric distortion before embedding. The preview RNG is a small xorshift generator used for noise.
+
+**BitDepth 0 previews the original carrier only.** Open and Save are disabled/rejected at zero. Change the depth back to the value used when saving before opening an existing container. Actual payloads can produce different distortion from the noise preview.
+
+## Experimental OBJ round-trip
+
+The first mesh's float components act as the carrier. The OBJ exporter writes finite coordinates with `std::numeric_limits<float>::max_digits10` precision and classic-locale decimal formatting. Disk round-trips at depths **1, 2, 4, 8, 12 and 16** verified both the float bytes and recovered multi-file payload through raylib's OBJ loader.
+
+The app works with triangle-expanded OBJ geometry as loaded by raylib. Geometry clones own their buffers and independent default materials; imported material/texture appearance is not preserved by the geometry-only export. High depths can severely distort geometry, and writes producing NaN/Inf coordinates are rejected. Arbitrary re-export, vertex reordering, mesh optimization or editing by another tool can destroy the payload.
+
+## Build and tests
+
+Tested on **Windows x64**, with **Visual Studio 2026 / MSVC 14.50**, **raylib 6.0**, bundled **raygui 4.0**, Premake and **C++17**. The first build downloads the pinned raylib 6.0 release. The Windows script finds an installed Visual Studio C++ toolchain; VS 2022 generation remains available, but that toolchain was not validated here.
+
+Install Visual Studio's **Desktop development with C++** workload and a Windows SDK, then run from the repository root:
+
+```bat
+build-VisualStudio2022.bat Debug
+build-VisualStudio2022.bat Release
+```
+
+The script name is retained for existing workflows; it builds the target and copies runtime resources into `bin/<configuration>/resources/`. Run `bin/Release/SecretFile.exe` from any working directory with that resource folder beside it. The C/C++ runtime is linked statically.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\test.ps1 -Configuration Debug
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\test.ps1 -Configuration Release
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\package.ps1
+```
+
+`package.ps1` creates `dist/SecretFile-windows-x64.zip` with the executable, required runtime resources, usage notes and licenses. It excludes PDB/IDB files and static libraries. MinGW generation is retained in `build-MinGW-W64.bat`; MinGW, Linux and macOS builds have not been validated.
+
+Tests use no additional test framework. [Coverage details](tests/README.md) include the standalone bit/container core, PNG/WAV/OBJ disk round-trips, malformed data, output paths and UI resource lifecycle. Debug and Release tests pass; AddressSanitizer also passed for the project's integration code linked against the raylib library.
+
+## Usage
+
+1. Drop a supported carrier into the main view.
+2. Set a nonzero **BitDepth**; **Open** reads an existing container or creates an empty one if no marker is found. Malformed marked containers report an error.
+3. Drop arbitrary files into the right panel. **Del** removes an entry; the mouse wheel scrolls long lists.
+4. **Save** writes `<name>_mod.png`, `.wav` or `.obj` **beside the source carrier**, leaving the source unchanged. Saving again replaces that modified output.
+5. Reopen the output at the same depth and press **Exp** to extract an entry into `<carrier-name>_extracted/`, beside the carrier. Stored paths are reduced to a safe filename; existing files/links are refused.
+
+## Limitations
+
+This experiment does not hide or protect its metadata, authenticate contents or provide cryptographic security. Recompression, conversion, editing, resampling and geometry processing can destroy embedded data. A correct marker does not prove that a payload is intact. Audio/model byte traversal currently requires a little-endian host and 32-bit IEEE-754 floats.
+
+Carrier parsing also depends on raylib's format loaders. This is an experimental desktop tool, not a hardened parser or a production security product.
+
+## License and author
+
+SecretFile code: [MIT](LICENSE). Bundled dependencies and assets retain their own terms; see [third-party notices](THIRD_PARTY_NOTICES.md).
+
+Tamás Harsányi — [Portfolio](https://www.tamasharsanyi.hu) · [GitHub](https://github.com/Harsanyi)
